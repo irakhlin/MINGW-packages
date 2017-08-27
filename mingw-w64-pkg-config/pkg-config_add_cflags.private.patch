@@ -1,0 +1,341 @@
+ main.c  |   7 +++-
+ parse.c | 113 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ parse.h |   3 +-
+ pkg.c   |  70 +++++++++++++++++++++++++++++++++++++++-
+ pkg.h   |   4 +++
+ 5 files changed, 187 insertions(+), 10 deletions(-)
+
+diff --git a/main.c b/main.c
+index 9b27d9a..b02a58b 100644
+--- a/main.c
++++ b/main.c
+@@ -609,10 +609,15 @@ main (int argc, char **argv)
+     debug_spew ("Error printing disabled\n");
+ 
+   if (want_static_lib_list)
++  {
+     enable_private_libs();
++    enable_private_cflags();
++  }
+   else
++  {
+     disable_private_libs();
+-
++    disable_private_cflags();
++  }
+   /* honor Requires.private if any Cflags are requested or any static
+    * libs are requested */
+ 
+diff --git a/parse.c b/parse.c
+index 7bb666d..c8145fe 100644
+--- a/parse.c
++++ b/parse.c
+@@ -764,14 +764,14 @@ parse_libs_private (Package *pkg, const char *str, const char *path)
+   int argc = 0;
+   GError *error = NULL;
+   
+-  if (pkg->libs_private_num > 0)
++ /*  if (pkg->libs_private_num > 0)
+     {
+       verbose_error ("Libs.private field occurs twice in '%s'\n", path);
+       if (parse_strict)
+         exit (1);
+       else
+         return;
+-    }
++    } */
+   
+   trimmed = trim_and_sub (pkg, str, path);
+ 
+@@ -808,14 +808,14 @@ parse_cflags (Package *pkg, const char *str, const char *path)
+   GError *error = NULL;
+   int i;
+   
+-  if (pkg->cflags)
++ /*  if (pkg->cflags)
+     {
+       verbose_error ("Cflags field occurs twice in '%s'\n", path);
+       if (parse_strict)
+         exit (1);
+       else
+         return;
+-    }
++    } */
+   
+   trimmed = trim_and_sub (pkg, str, path);
+ 
+@@ -890,6 +890,98 @@ parse_cflags (Package *pkg, const char *str, const char *path)
+ }
+ 
+ static void
++parse_cflags_private (Package *pkg, const char *str, const char *path)
++{
++  /* Strip out -I flags, put them in a separate list. */
++  
++  char *trimmed;
++  char **argv = NULL;
++  int argc = 0;
++  GError *error = NULL;
++  int i;
++  
++  if (pkg->cflags_private)
++    {
++      verbose_error ("Cflags.private field occurs twice in '%s'\n", path);
++      if (parse_strict)
++        exit (1);
++      else
++        return;
++    }
++  
++  trimmed = trim_and_sub (pkg, str, path);
++
++  if (trimmed && *trimmed &&
++      !g_shell_parse_argv (trimmed, &argc, &argv, &error))
++    {
++      verbose_error ("Couldn't parse Cflags.private field into an argument vector: %s\n",
++                     error ? error->message : "unknown");
++      if (parse_strict)
++        exit (1);
++      else
++        {
++          g_free (trimmed);
++          return;
++        }
++    }
++
++  i = 0;
++  while (i < argc)
++    {
++      Flag *flag = g_new (Flag, 1);
++      char *tmp = trim_string (argv[i]);
++      char *arg = strdup_escape_shell(tmp);
++      char *p = arg;
++      g_free(tmp);
++
++      if (p[0] == '-' &&
++          p[1] == 'I')
++        {
++          p += 2;
++          while (*p && isspace ((guchar)*p))
++            ++p;
++
++          flag->type = CFLAGS_I;
++          flag->arg = g_strconcat ("-I", p, NULL);
++          pkg->cflags = g_list_prepend (pkg->cflags_private, flag);
++        }
++      else if ((strcmp ("-idirafter", arg) == 0 ||
++                strcmp ("-isystem", arg) == 0) &&
++               i+1 < argc)
++        {
++          char *option, *tmp;
++
++          tmp = trim_string (argv[i+1]);
++          option = strdup_escape_shell (tmp);
++
++          /* These are -I flags since they control the search path */
++          flag->type = CFLAGS_I;
++          flag->arg = g_strconcat (arg, " ", option, NULL);
++          pkg->cflags = g_list_prepend (pkg->cflags_private, flag);
++          i++;
++          g_free (option);
++          g_free (tmp);
++        }
++      else if (*arg != '\0')
++        {
++          flag->type = CFLAGS_OTHER;
++          flag->arg = g_strdup (arg);
++          pkg->cflags = g_list_prepend (pkg->cflags_private, flag);
++        }
++      else
++        /* flag wasn't used */
++        g_free (flag);
++
++      g_free (arg);
++      
++      ++i;
++    }
++
++  g_strfreev (argv);
++  g_free (trimmed);
++}
++
++static void
+ parse_url (Package *pkg, const char *str, const char *path)
+ {
+   if (pkg->url != NULL)
+@@ -907,7 +999,7 @@ parse_url (Package *pkg, const char *str, const char *path)
+ static void
+ parse_line (Package *pkg, const char *untrimmed, const char *path,
+ 	    gboolean ignore_requires, gboolean ignore_private_libs,
+-	    gboolean ignore_requires_private)
++	    gboolean ignore_requires_private, gboolean ignore_private_cflags)
+ {
+   char *str;
+   char *p;
+@@ -970,6 +1062,12 @@ parse_line (Package *pkg, const char *untrimmed, const char *path,
+       else if (strcmp (tag, "Cflags") == 0 ||
+                strcmp (tag, "CFlags") == 0)
+         parse_cflags (pkg, p, path);
++      else if ((strcmp (tag, "Cflags.private") == 0) &&
++               ignore_private_cflags == FALSE)
++        parse_cflags_private (pkg, p, path);
++      else if ((strcmp (tag, "CFlags.private") == 0) &&
++               ignore_private_cflags == FALSE)
++        parse_cflags_private (pkg, p, path);
+       else if (strcmp (tag, "Conflicts") == 0)
+         parse_conflicts (pkg, p, path);
+       else if (strcmp (tag, "URL") == 0)
+@@ -1087,7 +1185,8 @@ Package*
+ parse_package_file (const char *key, const char *path,
+                     gboolean ignore_requires,
+                     gboolean ignore_private_libs,
+-                    gboolean ignore_requires_private)
++                    gboolean ignore_requires_private,
++					gboolean ignore_private_cflags)
+ {
+   FILE *f;
+   Package *pkg;
+@@ -1132,7 +1231,7 @@ parse_package_file (const char *key, const char *path,
+       one_line = TRUE;
+       
+       parse_line (pkg, str->str, path, ignore_requires, ignore_private_libs,
+-		  ignore_requires_private);
++		  ignore_requires_private, ignore_private_cflags);
+ 
+       g_string_truncate (str, 0);
+     }
+diff --git a/parse.h b/parse.h
+index db1bf86..c14029c 100644
+--- a/parse.h
++++ b/parse.h
+@@ -25,7 +25,8 @@
+ Package *parse_package_file (const char *key, const char *path,
+                              gboolean ignore_requires,
+                              gboolean ignore_private_libs,
+-                             gboolean ignore_requires_private);
++                             gboolean ignore_requires_private,
++							 gboolean ignore_private_cflags);
+ 
+ GList   *parse_module_list (Package *pkg, const char *str, const char *path);
+ 
+diff --git a/pkg.c b/pkg.c
+index f29ecc7..af1cf9b 100644
+--- a/pkg.c
++++ b/pkg.c
+@@ -50,6 +50,7 @@ gboolean disable_uninstalled = FALSE;
+ gboolean ignore_requires = FALSE;
+ gboolean ignore_requires_private = TRUE;
+ gboolean ignore_private_libs = TRUE;
++gboolean ignore_private_cflags = TRUE;
+ 
+ void
+ add_search_dir (const char *path)
+@@ -300,7 +301,7 @@ internal_get_package (const char *name, gboolean warn)
+ 
+   debug_spew ("Reading '%s' from file '%s'\n", name, location);
+   pkg = parse_package_file (key, location, ignore_requires,
+-                            ignore_private_libs, ignore_requires_private);
++                            ignore_private_libs, ignore_requires_private, ignore_private_cflags);
+   g_free (key);
+ 
+   if (pkg != NULL && strstr (location, "uninstalled.pc"))
+@@ -843,6 +844,60 @@ verify_package (Package *pkg)
+       --count;
+     }
+ 
++  count = 0;
++  for (iter = pkg->cflags_private; iter != NULL; iter = g_list_next (iter))
++    {
++      gint offset = 0;
++      Flag *flag = iter->data;
++
++      if (!(flag->type & CFLAGS_I))
++        continue;
++
++      /* Handle the system cflags. We put things in canonical
++       * -I/usr/include (vs. -I /usr/include) format, but if someone
++       * changes it later we may as well be robust.
++       *
++       * Note that the -i* flags are left out of this handling since
++       * they're intended to adjust the system cflags behavior.
++       */
++      if (((strncmp (flag->arg, "-I", 2) == 0) && (offset = 2))||
++          ((strncmp (flag->arg, "-I ", 3) == 0) && (offset = 3)))
++        {
++	  if (offset == 0)
++	    {
++	      iter = iter->next;
++	      continue;
++	    }
++
++	  system_dir_iter = system_directories;
++	  while (system_dir_iter != NULL)
++	    {
++	      if (strcmp (system_dir_iter->data,
++                          ((char*)flag->arg) + offset) == 0)
++		{
++                  debug_spew ("Package %s has %s in Cflags\n",
++			      pkg->key, (gchar *)flag->arg);
++		  if (g_getenv ("PKG_CONFIG_ALLOW_SYSTEM_CFLAGS") == NULL)
++		    {
++                      debug_spew ("Removing %s from cflags for %s\n",
++                                  flag->arg, pkg->key);
++		      ++count;
++		      iter->data = NULL;
++
++		      break;
++		    }
++		}
++	      system_dir_iter = system_dir_iter->next;
++	    }
++        }
++    }
++
++  while (count)
++    {
++      pkg->cflags_private = g_list_remove (pkg->cflags_private, NULL);
++      --count;
++    }
++
+   g_list_foreach (system_directories, (GFunc) g_free, NULL);
+   g_list_free (system_directories);
+ 
+@@ -1229,3 +1284,16 @@ disable_requires_private(void)
+ {
+   ignore_requires_private = TRUE;
+ }
++
++void
++enable_private_cflags(void)
++{
++  ignore_private_cflags = FALSE;
++}
++
++void
++disable_private_cflags(void)
++{
++  ignore_private_cflags = TRUE;
++}
++
+diff --git a/pkg.h b/pkg.h
+index c6732bd..3dda5d4 100644
+--- a/pkg.h
++++ b/pkg.h
+@@ -77,6 +77,7 @@ struct Package_
+   GList *requires_private;
+   GList *libs;
+   GList *cflags;
++  GList *cflags_private;
+   GHashTable *vars;
+   GHashTable *required_versions; /* hash from name to RequiredVersion */
+   GList *conflicts; /* list of RequiredVersion */
+@@ -116,6 +117,9 @@ void verbose_error (const char *format, ...);
+ 
+ gboolean name_ends_in_uninstalled (const char *str);
+ 
++void enable_private_cflags(void);
++void disable_private_cflags(void);
++
+ void enable_private_libs(void);
+ void disable_private_libs(void);
+ void enable_requires(void);
