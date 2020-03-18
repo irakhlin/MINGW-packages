@@ -3,8 +3,10 @@
 _realname=gimp
 pkgbase=mingw-w64-${_realname}
 pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}")
-pkgver=2.9.6
-pkgrel=1
+_basever=2.10.18
+_prever=
+pkgver=${_basever}${_prever//-/}
+pkgrel=2
 pkgdesc="GNU Image Manipulation Program (mingw-w64)"
 arch=('any')
 url="https://www.gimp.org/"
@@ -16,41 +18,44 @@ depends=("${MINGW_PACKAGE_PREFIX}-babl"
          "${MINGW_PACKAGE_PREFIX}-gegl"
          "${MINGW_PACKAGE_PREFIX}-gexiv2"
          "${MINGW_PACKAGE_PREFIX}-ghostscript"
+         "${MINGW_PACKAGE_PREFIX}-glib-networking"
          "${MINGW_PACKAGE_PREFIX}-hicolor-icon-theme"
+         "${MINGW_PACKAGE_PREFIX}-iso-codes"
          "${MINGW_PACKAGE_PREFIX}-jasper"
          "${MINGW_PACKAGE_PREFIX}-lcms2"
          "${MINGW_PACKAGE_PREFIX}-libexif"
+         "${MINGW_PACKAGE_PREFIX}-libheif"
          "${MINGW_PACKAGE_PREFIX}-libmng"
          "${MINGW_PACKAGE_PREFIX}-libmypaint"
          "${MINGW_PACKAGE_PREFIX}-librsvg"
          "${MINGW_PACKAGE_PREFIX}-libwmf"
+         "${MINGW_PACKAGE_PREFIX}-mypaint-brushes"
          "${MINGW_PACKAGE_PREFIX}-openexr"
+         "${MINGW_PACKAGE_PREFIX}-openjpeg2"
          "${MINGW_PACKAGE_PREFIX}-poppler"
          "${MINGW_PACKAGE_PREFIX}-python2-pygtk"
          "${MINGW_PACKAGE_PREFIX}-python2-gobject"
-         "${MINGW_PACKAGE_PREFIX}-webkitgtk2"
          "${MINGW_PACKAGE_PREFIX}-xpm-nox"
         )
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
-             "${MINGW_PACKAGE_PREFIX}-iso-codes"
              "intltool")
 options=('strip' 'makeflags')
 install=gimp-${CARCH}.install
-source=(https://download.gimp.org/pub/gimp/v${pkgver%.*}/${_realname}-${pkgver}.tar.bz2
+source=(https://download.gimp.org/pub/gimp/v${_basever%.*}/${_realname}-${_basever}${_prever}.tar.bz2
         0001-find-directx-fix.patch
         0002-python-m4.patch
         0003-mingw-add-ModuleFileName-dir-to-PATH.patch
         0004-replace-pygtk-codegen.patch
         0005-fix-link-python-plugins.patch)
-sha256sums=('b46f31d822a33ab416dcb15e33e10b5b98430814fa34f5ea4036230e845dfc9f'
+sha256sums=('65bfe111e8eebffd3dde3016ccb507f9948d2663d9497cb438d9bb609e11d716'
             'f7f9badc547f1a0317b95e012530db8df63b7c7038c9d9ff8d0b510c86f43439'
-            '6dae330b6cf6e7fd7ca7fc5fa95db1777323ce7cee3650eee27814ac70ecea4d'
+            'ae9b6e8fa40fd471cb58f17454219abf531565b5fbaf616e5fc81b3869bbc4b5'
             '682656d1f7ec70bfd3dd10eba3f8db8abb75c80e44933f8c09c730cea5aeb549'
             'e7cc5603c51517add367d8062eb3a28d5b6c51eded6cb51f749c4570f27b91a7'
             '01651bb582b2120aae67752f6a28c0750ea690d46259d855e28f8b18da567bf5')
 
 prepare() {
-  cd "${srcdir}/${_realname}-${pkgver}"
+  cd "${srcdir}/${_realname}-${_basever}${_prever}"
   patch -p1 -i ${srcdir}/0001-find-directx-fix.patch
   patch -p1 -i ${srcdir}/0002-python-m4.patch
   patch -p1 -i ${srcdir}/0003-mingw-add-ModuleFileName-dir-to-PATH.patch
@@ -69,7 +74,7 @@ prepare() {
 
 build() {
   [[ -d build-${MINGW_CHOST} ]] && rm -rf build-${MINGW_CHOST}
-  cp -rf ${_realname}-${pkgver} build-${MINGW_CHOST}
+  cp -rf ${_realname}-${_basever}${_prever} build-${MINGW_CHOST}
   cd build-${MINGW_CHOST}
 
   PYTHON=${MINGW_PREFIX}/bin/python2 \
@@ -85,7 +90,8 @@ build() {
     --without-aa \
     --with-pdbgen \
     --with-directx-sdk=${MINGW_PREFIX}/${MINGW_CHOST} \
-    --without-x
+    --without-x \
+    --without-webkit
 
   # V=1 because of a race condition (a generated 'bin2c' type
   # file ending up truncated once). This might avoid it.

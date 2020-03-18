@@ -3,102 +3,82 @@
 
 _realname=sip
 pkgbase=mingw-w64-${_realname}
-pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}" "${MINGW_PACKAGE_PREFIX}-python2-${_realname}" "${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
-pkgver=4.19.3
-#_pre_ver=4.19.1.dev1702081834
+pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}" "${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+pkgver=4.19.21
 pkgrel=1
 pkgdesc="Tool to create Python bindings for C and C++ libraries (mingw-w64)"
 arch=('any')
 license=('GPL')
-url="http://www.riverbankcomputing.co.uk/software/sip"
+url="https://riverbankcomputing.com/software/sip"
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
-             "${MINGW_PACKAGE_PREFIX}-python2"
-             "${MINGW_PACKAGE_PREFIX}-python3")
-source=("https://downloads.sourceforge.net/project/pyqt/${_realname}/${_realname}-${pkgver}/${_realname}-${pkgver}.tar.gz"
-        #https://www.riverbankcomputing.com/static/Downloads/sip/sip-${_pre_ver}.tar.gz
-        "0001-mingw-python.patch")
-sha256sums=('740df844f80cc45dcc9b23294a92492923bc403ce88e68c35783f27c177c4b74'
-            'eab49324d351582f3f7d5da772a009fdf54d2a8366ed28bba2318a7b384a980c')
+             "${MINGW_PACKAGE_PREFIX}-python")
+source=(#"https://downloads.sourceforge.net/project/pyqt/${_realname}/${_realname}-${pkgver}/${_realname}-${pkgver}.tar.gz"
+        https://www.riverbankcomputing.com/static/Downloads/sip/${pkgver}/sip-${pkgver}.tar.gz
+        "0001-mingw-python.patch"
+        "0002-add-exe-in-sipconfig.patch")
+sha256sums=('6af9979ab41590e8311b8cc94356718429ef96ba0e3592bdd630da01211200ae'
+            '2e3400c7467faca17b6efaae2e2420b0a253df9070b1ed0adcafcc10f9499a8d'
+            '37b3c0b5da1731e1fb7044cd4af5e4ac81ee3f12f4b8a3a4584f3081441a4d31')
 
 prepare() {
   cd "${srcdir}"/${_realname}-${pkgver}
 
   # Apply patches
   patch -p1 -i "${srcdir}"/0001-mingw-python.patch
+  patch -p1 -i "${srcdir}"/0002-add-exe-in-sipconfig.patch
 }
 
 build() {
-  for builddir in python{2,3}-${MINGW_CHOST}; do
-    [[ -d $builddir ]] && rm -rf ${builddir}
-    cp -r ${_realname}-${pkgver} ${builddir}
-    pushd ${builddir}
-    ${MINGW_PREFIX}/bin/${builddir%-${MINGW_CHOST}} configure.py \
-      CFLAGS="${CFLAGS}" LFLAGS="${LDFLAGS}"
+  [[ -d python-${MINGW_CHOST} ]] && rm -rf python-${MINGW_CHOST}
+  cp -r ${_realname}-${pkgver} python-${MINGW_CHOST}
+  pushd python-${MINGW_CHOST}
+    ${MINGW_PREFIX}/bin/python configure.py \
+        --sip-module PyQt5.sip CFLAGS="${CFLAGS}" LFLAGS="${LDFLAGS}"
     make
-    popd
-  done
+  popd
 }
 
 package_sip() {
   pkgdesc="A tool that makes it easy to create Python bindings for C and C++ libraries (mingw-w64)"
   depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs")
 
-  cd python2-${MINGW_CHOST}
+  cd "${srcdir}"/python-${MINGW_CHOST}
   make DESTDIR="${pkgdir}" install -C sipgen
 
   install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
 }
 
-package_python3-sip() {
+package_python-sip() {
   pkgdesc="Python 3.x SIP bindings for C and C++ libraries (mingw-w64)"
-  depends=("${MINGW_PACKAGE_PREFIX}-sip" "${MINGW_PACKAGE_PREFIX}-python3")
+  depends=("${MINGW_PACKAGE_PREFIX}-sip" "${MINGW_PACKAGE_PREFIX}-python")
+  provides=("${MINGW_PACKAGE_PREFIX}-python3-sip=${pkgver}")
+  conflicts=("${MINGW_PACKAGE_PREFIX}-python3-sip")
+  replaces=("${MINGW_PACKAGE_PREFIX}-python3-sip")
 
-  cd python3-${MINGW_CHOST}
+  cd python-${MINGW_CHOST}
   make DESTDIR="${pkgdir}" install -C siplib
 
   local _py3basever=$(${MINGW_PREFIX}/bin/python3 -c "import sys;sys.stdout.write('.'.join(map(str, sys.version_info[:2])))")
 
+  sed -e "s|[\'\"]${MINGW_PREFIX}|sys.prefix \+ \'|g" -i sipconfig.py
   install -Dm644 sipconfig.py "${pkgdir}${MINGW_PREFIX}"/lib/python${_py3basever}/site-packages/sipconfig.py
   install -Dm644 sipdistutils.py "${pkgdir}${MINGW_PREFIX}"/lib/python${_py3basever}/site-packages/sipdistutils.py
 
   install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python3-sip/LICENSE"
 }
 
-package_python2-sip() {
-  pkgdesc="Python 2.x SIP bindings for C and C++ libraries (mingw-w64)"
-  depends=("${MINGW_PACKAGE_PREFIX}-sip" "${MINGW_PACKAGE_PREFIX}-python2")
-
-  cd python2-${MINGW_CHOST}
-  make DESTDIR="${pkgdir}" install -C siplib
-
-  local _py2basever=$(${MINGW_PREFIX}/bin/python2 -c "import sys;sys.stdout.write('.'.join(map(str, sys.version_info[:2])))")
-
-  install -Dm644 sipconfig.py "${pkgdir}${MINGW_PREFIX}"/lib/python${_py2basever}/site-packages/sipconfig.py
-  install -Dm644 sipdistutils.py "${pkgdir}${MINGW_PREFIX}"/lib/python${_py2basever}/site-packages/sipdistutils.py
-
-  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python2-sip/LICENSE"
-}
-
 package_mingw-w64-i686-sip() {
   package_sip
 }
 
-package_mingw-w64-i686-python2-sip() {
-  package_python2-sip
-}
-
-package_mingw-w64-i686-python3-sip() {
-  package_python3-sip
+package_mingw-w64-i686-python-sip() {
+  package_python-sip
 }
 
 package_mingw-w64-x86_64-sip() {
   package_sip
 }
 
-package_mingw-w64-x86_64-python2-sip() {
-  package_python2-sip
-}
-
-package_mingw-w64-x86_64-python3-sip() {
-  package_python3-sip
+package_mingw-w64-x86_64-python-sip() {
+  package_python-sip
 }

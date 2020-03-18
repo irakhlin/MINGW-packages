@@ -1,20 +1,22 @@
 # Maintainer (MSYS2): Ray Donnelly <mingw.android@gmail.com>
+# Contributor: Zach Bacon <zachbacon@vba-m.com>
 
 _variant=-${KF5_VARIANT:-shared}
 source "$(dirname ${BASH_SOURCE[0]})"/../mingw-w64-PKGBUILD-common/kde-frameworks5
 _kde_f5_init_package "${_variant}" "ki18n"
-pkgver=5.38.0
+pkgver=5.68.0
 pkgrel=1
 arch=('any')
 pkgdesc="KDE Gettext-based UI text internationalization (mingw-w64-qt5${_namesuff})"
 license=('LGPL')
 makedepends=("${MINGW_PACKAGE_PREFIX}-extra-cmake-modules>=${pkgver}")
 depends=()
-_kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-qt5${_namesuff}" "${MINGW_PACKAGE_PREFIX}-bzip2"
+_kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-gettext"
+_kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-qt5${_namesuff}"
 groups=('kf5')
 source=("https://download.kde.org/stable/frameworks/${pkgver%.*}/${_basename}-${pkgver}.tar.xz"
         "build-ktranscript-plugin-statically-if-not-shared.patch")
-sha256sums=('240ccf22a65cf85da900c88afceac8bedc40b71a4d19bad526c03aa285cc2a7d'
+sha256sums=('2c59dd55d032c95710e338e376a31bf11d799bceba8ebfdb148c8b77067a1e92'
             'fb05bcdf56feec1cae600a10b9706c6573bc9b39becea0e1061b10a65dc68a40')
 
 prepare() {
@@ -28,22 +30,17 @@ build() {
   cd build-${CARCH}${_variant}
   if [ "${_variant}" = "-static" ]; then
     extra_config+=( -DBUILD_SHARED_LIBS=NO )
-    QT5_PREFIX=${MINGW_PREFIX}/qt5-static
-    export PATH=${QT5_PREFIX}/bin:"$PATH"
-  else
-    QT5_PREFIX=${MINGW_PREFIX}
   fi
 
-  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=;-DECM_MKSPECS_INSTALL_DIR=" \
-    cmake ../${_basename}-${pkgver} \
-      -DCMAKE_BUILD_TYPE=$(_kde_f5_CMAKE_BUILD_TYPE) \
-      -DCMAKE_INSTALL_PREFIX=${QT5_PREFIX} \
-      -DKDE_INSTALL_LIBDIR=lib \
-      -DECM_MKSPECS_INSTALL_DIR=${QT5_PREFIX}/share/qt5/mkspecs \
-      -DBUILD_TESTING=OFF \
-      -DECM_DIR=${MINGW_PREFIX}/share/ECM \
-      "${extra_config[@]}" \
-      -G'MSYS Makefiles'
+  _kde_f5_build_env
+  cmake ../${_basename}-${pkgver} \
+    -DCMAKE_BUILD_TYPE=$(_kde_f5_CMAKE_BUILD_TYPE) \
+    "${_kde_f5_KDE_INSTALL_DIRS[@]}" \
+    -DBUILD_QCH=OFF \
+    -DBUILD_TESTING=OFF \
+    -DECM_DIR=${MINGW_PREFIX}/share/ECM \
+    "${extra_config[@]}" \
+    -G'MSYS Makefiles'
   make
 }
 

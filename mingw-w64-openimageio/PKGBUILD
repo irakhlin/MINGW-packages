@@ -3,11 +3,11 @@
 _realname=openimageio
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=1.7.17
+pkgver=2.1.12.0
 pkgrel=1
 pkgdesc="A library for reading and writing images, including classes, utilities, and applications (mingw-w64)"
 arch=('any')
-url="http://www.openimageio.org/"
+url="https://www.openimageio.org/"
 license=("custom")
 depends=("${MINGW_PACKAGE_PREFIX}-boost"
          "${MINGW_PACKAGE_PREFIX}-field3d"
@@ -16,71 +16,96 @@ depends=("${MINGW_PACKAGE_PREFIX}-boost"
          "${MINGW_PACKAGE_PREFIX}-giflib"
          "${MINGW_PACKAGE_PREFIX}-glew"
          "${MINGW_PACKAGE_PREFIX}-hdf5"
+         "${MINGW_PACKAGE_PREFIX}-libheif"
          "${MINGW_PACKAGE_PREFIX}-libjpeg"
          "${MINGW_PACKAGE_PREFIX}-libpng"
-         "${MINGW_PACKAGE_PREFIX}-LibRaw"
-         "${MINGW_PACKAGE_PREFIX}-libwebp"
+         "${MINGW_PACKAGE_PREFIX}-libraw"
+         "${MINGW_PACKAGE_PREFIX}-libsquish"
+         "${MINGW_PACKAGE_PREFIX}-ffmpeg"
          "${MINGW_PACKAGE_PREFIX}-libtiff"
+         "${MINGW_PACKAGE_PREFIX}-libwebp"
          "${MINGW_PACKAGE_PREFIX}-opencolorio"
          "${MINGW_PACKAGE_PREFIX}-opencv"
          "${MINGW_PACKAGE_PREFIX}-openexr"
          "${MINGW_PACKAGE_PREFIX}-openjpeg"
          "${MINGW_PACKAGE_PREFIX}-openssl"
+         "${MINGW_PACKAGE_PREFIX}-ptex"
+         "${MINGW_PACKAGE_PREFIX}-pugixml"
          "${MINGW_PACKAGE_PREFIX}-zlib")
 makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
              #"${MINGW_PACKAGE_PREFIX}-qt5"
-             "${MINGW_PACKAGE_PREFIX}-python2"
-             "${MINGW_PACKAGE_PREFIX}-boost")
-optdepends=(#"${MINGW_PACKAGE_PREFIX}-qt4: iv image viewer"
-            "${MINGW_PACKAGE_PREFIX}-python2: bindings support")
-options=('strip' 'buildflags')
+             "${MINGW_PACKAGE_PREFIX}-python3"
+             "${MINGW_PACKAGE_PREFIX}-boost"
+             "${MINGW_PACKAGE_PREFIX}-pybind11"
+             "git")
+optdepends=(#"${MINGW_PACKAGE_PREFIX}-qt5: iv image viewer"
+            "${MINGW_PACKAGE_PREFIX}-python3: bindings support")
+options=('strip' 'buildflags' '!debug')
 source=(${_realname}-${pkgver}.tar.gz::https://github.com/OpenImageIO/oiio/archive/Release-${pkgver}.tar.gz
-        fix-mingw-w64.patch
-        workaround-ansidecl-h-PTR-define-conflict.patch
+        git+https://github.com/OpenImageIO/oiio-images.git
+        0000-fix-mingw-w64.patch
+        0000-workaround-ansidecl-h-PTR-define-conflict.patch
         0001-MinGW-w64-include-winbase-h-early-for-TCHAR-types.patch
-        0003-boost-latest.patch
-        0004-guard-msvc-stuff.patch
-        0005-fix-initialization.patch)
-sha256sums=('669c59d06399dd882c3e2469bb3a4b33d537db150f6fe056495c3429b5c3838f'
-            '138b21e2c21fc43023f5788fa107f904454fda7812d1ab4f762de18b323b8649'
-            'ab6bde02c0c05495a9cb13441535d42f4d5929bd930859d75f589d12be9a182b'
+        0007-find-pugixml.patch
+        0008-find-openjpeg.patch
+        0011-fix-casting.patch
+        0012-maybe-uninitialized-errors.patch
+        0013-dont-export-enums.patch
+        0014-fix-ptex-string-format.patch)
+sha256sums=('da27e191349ef473220c7a373921e6d4c69d9924acd87140af55ce9d00ad58f8'
+            'SKIP'
+            '73c46166c1d19922b6b54f4e1e18128c33dadbc72a36b683049ec297ce1056b3'
+            '9e4e21333676268a91c0f4e7676aeab7658e5f748e7e5cfe43a92f0fd7931229'
             'b7cc78d0f535ceb1aba68b11970c32ffbf04815d229b12e64e2c2c0b3403b4b2'
-            'ac7039e5e9ba7e1a4e92d5f674282d270d0dee7afd96d3899f12544a0f6392d1'
-            '3a73e95486a5a50685eed753f11c433bcf9f1b1a46947d6ae1350c8f68568536'
-            'bddb6c328e13d7b53e511acba4e21cb6a3b2a09a961c34a566bf38c84622fed4')
+            '2a65114ebfa945876751283bcae50f695b31c772294311cca72f72c93ab098f1'
+            'c3816722d2e571e236f6d0512d407854f2744416891b44faf6912b1506f79481'
+            'f006ddd0b0a3660ba074eee970af0e7d1c0538528c56166e06a1ded30413f635'
+            'bc37ea8326f7f5f26068051b537f2491e9554a380e6584bf55aaad111d33eb81'
+            'b3d1ce84de09b2de5047c79c7a9fbaff59d7cd45d0ce92ddd11fe40082a781b4'
+            '6845acb6229a40512407a983aa07470e9ff1832db7a1e01c408ee74898ddc504')
 
 prepare() {
   cd ${srcdir}/oiio-Release-${pkgver}
-  patch -p1 -i ${srcdir}/fix-mingw-w64.patch
-  patch -p1 -i ${srcdir}/workaround-ansidecl-h-PTR-define-conflict.patch
+  patch -p1 -i ${srcdir}/0000-fix-mingw-w64.patch
+  patch -p1 -i ${srcdir}/0000-workaround-ansidecl-h-PTR-define-conflict.patch
   patch -p1 -i ${srcdir}/0001-MinGW-w64-include-winbase-h-early-for-TCHAR-types.patch
-  patch -p1 -i ${srcdir}/0003-boost-latest.patch
-  patch -p1 -i ${srcdir}/0004-guard-msvc-stuff.patch
-  patch -p1 -i ${srcdir}/0005-fix-initialization.patch
+  patch -p1 -i ${srcdir}/0007-find-pugixml.patch
+  patch -p1 -i ${srcdir}/0008-find-openjpeg.patch
+  patch -p1 -i ${srcdir}/0011-fix-casting.patch
+  patch -p1 -i ${srcdir}/0012-maybe-uninitialized-errors.patch
+  patch -p1 -i ${srcdir}/0013-dont-export-enums.patch
+  patch -p1 -i ${srcdir}/0014-fix-ptex-string-format.patch
 }
 
 build() {
-  export OPENJPEG_HOME=${MINGW_PREFIX}
-  [[ -d "build-${MINGW_CHOST}" ]] && rm -rf "build-${MINGW_CHOST}"
-  mkdir -p ${srcdir}/build-${MINGW_CHOST}
-  cd ${srcdir}/build-${MINGW_CHOST}
+  declare -a extra_config
+  if check_option "debug" "n"; then
+    extra_config+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    extra_config+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
 
-  CXXFLAGS+=" -faligned-new"
+  [[ -d "build-${MINGW_CHOST}" ]] && rm -rf "build-${MINGW_CHOST}"
+  mkdir -p build-${MINGW_CHOST} && cd build-${MINGW_CHOST}
+
+  local _pyver=$(${MINGW_PREFIX}/bin/python3 -c "import sys;sys.stdout.write('.'.join(map(str, sys.version_info[:2])))")
 
   MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
   ${MINGW_PREFIX}/bin/cmake.exe \
     -G"MSYS Makefiles" \
     -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
-    -DPYLIB_INSTALL_DIR=lib/python2.7/site-packages \
     -DUSE_FREETYPE=ON \
     -DUSE_OPENCV=ON \
     -DUSE_FIELD3D=ON \
-    -DUSE_OPENSSL=ON \
-    -DFREETYPE_INCLUDE_PATH=${MINGW_PREFIX}/include/freetype2 \
-    -DOPENJPEG_INCLUDE_DIR=${MINGW_PREFIX}/include/openjpeg-2.2 \
-    -DOPENJPEG_OPENJPEG_LIBRARIES=${MINGW_PREFIX}/lib/libopenjp2.dll.a \
-    -DCMAKE_SHARED_LINKER_FLAGS=" -Wl,--export-all-symbols -Wl,--enable-auto-import " \
+    -DUSE_OPENGL=ON \
+    -DUSE_QT=OFF \
+    -DUSE_FFMPEG=ON \
+    -DHIDE_SYMBOLS=ON \
+    -DPYTHON_VERSION=${_pyver} \
+    -DUSE_EXTERNAL_PUGIXML=ON \
     -DOIIO_BUILD_TESTS=ON \
+    -DSTOP_ON_WARNING=OFF \
+    ${extra_config} \
     ../oiio-Release-${pkgver}
 
   make
@@ -89,5 +114,6 @@ build() {
 package() {
   cd "${srcdir}"/build-${MINGW_CHOST}
   make DESTDIR=${pkgdir} install
-  install -Dm644 ${srcdir}/oiio-Release-${pkgver}/LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
+  install -Dm644 ${srcdir}/oiio-Release-${pkgver}/LICENSE.md "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE.md"
+  install -Dm644 ${srcdir}/oiio-Release-${pkgver}/LICENSE-THIRD-PARTY.md "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE-THIRD-PARTY.md"
 }

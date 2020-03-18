@@ -1,19 +1,20 @@
 # Maintainer (MSYS2): Ray Donnelly <mingw.android@gmail.com>
+# Contributor: Zach Bacon <zachbacon@vba-m.com>
 
 _variant=-${KF5_VARIANT:-shared}
 source "$(dirname ${BASH_SOURCE[0]})"/../mingw-w64-PKGBUILD-common/kde-frameworks5
 _kde_f5_init_package "${_variant}" "kdbusaddons"
-pkgver=5.38.0
+pkgver=5.68.0
 pkgrel=1
 arch=('any')
-pkgdesc="KConfig provides an advanced configuration system (mingw-w64-qt5${_namesuff})"
+pkgdesc="Addons for QtDBus (mingw-w64-qt5${_namesuff})"
 license=('LGPL')
 makedepends=("${MINGW_PACKAGE_PREFIX}-extra-cmake-modules>=${pkgver}")
 depends=()
-_kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-qt5${_namesuff}" "${MINGW_PACKAGE_PREFIX}-bzip2"
+_kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-qt5${_namesuff}"
 groups=('kf5')
 source=("https://download.kde.org/stable/frameworks/${pkgver%.*}/${_basename}-${pkgver}.tar.xz")
-sha256sums=('1c1f8955570cd7e0480ec619084c5ea56cbffaca5307d9053d52092f10d589d7')
+sha256sums=('839fe42f9ac8df353f87245110fd7b515a8eb29f0840f54481bd89e5175bf1af')
 
 prepare() {
   mkdir -p build-${CARCH}${_variant}
@@ -35,7 +36,8 @@ build() {
       -DCMAKE_BUILD_TYPE=$(_kde_f5_CMAKE_BUILD_TYPE) \
       -DCMAKE_INSTALL_PREFIX=${QT5_PREFIX} \
       -DKDE_INSTALL_LIBDIR=lib \
-      -DECM_MKSPECS_INSTALL_DIR=${QT5_PREFIX}/share/qt5/mkspecs \
+      -DECM_MKSPECS_INSTALL_DIR=${QT5_PREFIX}/share/qt5/mkspecs/modules \
+      -DBUILD_QCH=OFF \
       -DBUILD_TESTING=OFF \
       -DECM_DIR=${MINGW_PREFIX}/share/ECM \
       "${extra_config[@]}" \

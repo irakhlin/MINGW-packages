@@ -1,0 +1,67 @@
+--- qca/CMakeLists.txt.orig	2015-07-16 11:01:38.665447700 +0300
++++ qca/CMakeLists.txt	2015-07-16 11:19:17.252578400 +0300
+@@ -277,8 +277,9 @@
+ endif()
+ 
+ message(STATUS "Checking for certstore..")
++if(NOT QCA_SYSTEMSTORE_PATH)
+ # fixme add OR mac
+-if( WIN32 )
++if( MSVC )
+     # USE BUILTIN
+ else()
+   if ( DEFINED ENV{QC_CERTSTORE_PATH} )
+@@ -300,6 +301,8 @@
+       endif()
+     endforeach (_current_try)
+   endif()
++else()
++  set(qca_CERTSTORE ${QCA_SYSTEMSTORE_PATH})
+ endif()
+ 
+ if (qca_CERTSTORE)
+@@ -316,6 +317,10 @@
+ endif()
+ message(STATUS "certstore path: " ${qca_CERTSTORE})
+ add_definitions( -DQCA_SYSTEMSTORE_PATH="${qca_CERTSTORE}" )
++else()
++message(STATUS "certstore path: " ${QCA_SYSTEMSTORE_PATH})
++add_definitions( -DQCA_SYSTEMSTORE_PATH="${qca_CERTSTORE}" )
++endif()
+ 
+ 
+ set( private_HEADERS ${qca_INCLUDEDIR}/QtCrypto/qca_plugin.h ${qca_INCLUDEDIR}/QtCrypto/qca_systemstore.h )
+--- qca/src/CMakeLists.txt.orig	2015-07-16 11:09:16.212688400 +0300
++++ qca/src/CMakeLists.txt	2015-07-16 11:16:34.878817400 +0300
+@@ -50,7 +50,7 @@
+ 	support/syncthread.cpp
+ )
+ 
+-IF (WIN32)
++IF (MSVC)
+   SET( SOURCES ${SOURCES} qca_systemstore_win.cpp )
+ elseif(APPLE)
+   set( SOURCES ${SOURCES} qca_systemstore_mac.cpp)
+--- qca/src/qca_systemstore_flatfile.cpp.orig	2015-07-16 11:16:51.678137300 +0300
++++ qca/src/qca_systemstore_flatfile.cpp	2015-07-16 11:35:28.073486600 +0300
+@@ -21,6 +21,7 @@
+ #include "qca_systemstore.h"
+ 
+ #include <QFile>
++#include <QCoreApplication>
+ 
+ namespace QCA {
+ 
+@@ -32,7 +32,12 @@
+ 
+ CertificateCollection qca_get_systemstore(const QString &provider)
+ {
++#ifdef Q_OS_WIN
++	QString certstore = QCoreApplication::applicationDirPath() + QStringLiteral(QCA_SYSTEMSTORE_PATH);
++	return CertificateCollection::fromFlatTextFile(certstore, nullptr, provider);
++#else
+ 	return CertificateCollection::fromFlatTextFile(QStringLiteral(QCA_SYSTEMSTORE_PATH), nullptr, provider);
++#endif
+ }
+ 
+ }

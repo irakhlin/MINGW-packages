@@ -1,0 +1,72 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=stevedore
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=1.32.0
+pkgrel=1
+pkgdesc="Manage dynamic plugins for Python applications (mingw-w64)"
+arch=('any')
+url='https://github.com/openstack/stevedore'
+license=('Apache')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-six")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+options=('staticlibs' 'strip' '!debug')
+source=(https://pypi.org/packages/source/s/stevedore/stevedore-${pkgver}.tar.gz)
+sha256sums=('18afaf1d623af5950cc0f7e75e70f917784c73b652a34a12d90b309451b5500b')
+
+# Helper macros to help make tasks easier #
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
+
+del_file_exists() {
+  for _fname in "$@"
+  do
+    if [ -f $_fname ]; then
+      rm -rf $_fname
+    fi
+  done
+}
+# =========================================== #
+
+prepare() {
+  cd "${srcdir}"
+  pushd "${_realname}-${pkgver}"
+  # Remove dependency on pbr; it's not a runtime dependency
+  sed -i '/pbr/d' requirements.txt
+  popd 
+
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+}
+
+build() {
+  msg "Python build for ${CARCH}"  
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  msg "Python test for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py check
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+}

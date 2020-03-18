@@ -6,7 +6,7 @@
 _realname=libmicrohttpd
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=0.9.55
+pkgver=0.9.70
 pkgrel=1
 pkgdesc="GNU libmicrohttpd is a small C library that is supposed to make it easy to run an HTTP server as part of another application (mingw-w64)"
 arch=('any')
@@ -14,28 +14,47 @@ url="https://www.gnu.org/software/libmicrohttpd"
 license=("LGPL")
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
              "${MINGW_PACKAGE_PREFIX}-libtool"
-             "${MINGW_PACKAGE_PREFIX}-pkg-config"
-             "${MINGW_PACKAGE_PREFIX}-curl")
-depends=("${MINGW_PACKAGE_PREFIX}-gnutls"
-         "${MINGW_PACKAGE_PREFIX}-libgcrypt")
+             "${MINGW_PACKAGE_PREFIX}-pkg-config")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-curl")
+depends=("${MINGW_PACKAGE_PREFIX}-gnutls")
 source=("https://ftp.gnu.org/gnu/libmicrohttpd/${_realname}-${pkgver}.tar.gz"{,.sig})
 validpgpkeys=('D8423BCB326C7907033929C7939E6BE1E29FC3CC'  # Christian Grothoff <christian@grothoff.org>
-              '289FE99E138CF6D473A3F0CFBF7AC4A5EAC2BAF4') # Karlson2k (Evgeny Grin) <k2k@narod.ru>
-sha256sums=('0c1cab8dc9f2588bd3076a28f77a7f8de9560cbf2d80e53f9a8696ada80ed0f8'
+              'EA812DBEFA5A7EF17DA8F2C1460A317C3326D2AE') # Karlson2k (Evgeny Grin) <k2k@narod.ru>
+sha256sums=('90d0a3d396f96f9bc41eb0f7e8187796049285fabef82604acd4879590977307'
             'SKIP')
 
+prepare() {
+  cd ${_realname}-${pkgver}
+}
+
 build() {
+  declare -a extra_config
+  if check_option "debug" "y"; then
+    extra_config+=("--enable-asserts")
+  else
+    extra_config+=("--disable-asserts")
+  fi
+
   [[ -d ${srcdir}/build-${MINGW_CHOST} ]] && rm -rf ${srcdir}/build-${MINGW_CHOST}
   mkdir -p ${srcdir}/build-${MINGW_CHOST} && cd ${srcdir}/build-${MINGW_CHOST}
   ../${_realname}-${pkgver}/configure \
+    CPPFLAGS="${CPPFLAGS} -D_WIN32_WINNT=0x0601" \
     --prefix=${MINGW_PREFIX} \
     --build=${MINGW_CHOST} \
     --host=${MINGW_CHOST} \
+    "${extra_config[@]}" \
     --disable-examples \
+    --enable-https \
     --enable-shared \
     --enable-static
 
   make
+}
+
+check() {
+  cd "${srcdir}/build-${MINGW_CHOST}"
+  cd src/microhttpd/ # Run only basic tests until curl fix crash in curl_global_cleanup ()
+  make -j1 check
 }
 
 package() {

@@ -3,25 +3,38 @@
 _realname=geoip2-database
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=20150720
+pkgver=20190624
 pkgrel=1
 pkgdesc="GeoLite country geolocation database compiled by MaxMind (mingw-w64)"
 arch=('any')
-url="https://www.maxmind.com/en/geoip2-services-and-databases"
+url="https://dev.maxmind.com/geoip/geoip2/geolite2/"
 license=('custom:Creative Commons Attribution-ShareAlike 3.0 Unported')
-source=(GeoLite2-Country-${pkgver}.mmdb.gz::https://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
-        #GeoLite2-City-${pkgver}.mmdb.gz::https://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
-        )
-sha256sums=('4819459376f61423f5fb96eff141bf486d8e6133c47acd832d2ba87a39f2a922')
+source=(GeoLite2-City-${pkgver}.tar.gz::https://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz
+        GeoLite2-Country-${pkgver}.tar.gz::https://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.tar.gz
+        GeoLite2-ASN-${pkgver}.tar.gz::https://geolite.maxmind.com/download/geoip/database/GeoLite2-ASN.tar.gz)
+noextract=(GeoLite2-City-${pkgver}.tar.gz
+           GeoLite2-Country-${pkgver}.tar.gz
+           GeoLite2-ASN-${pkgver}.tar.gz)
+sha256sums=('491367661ccfda918c606a140154aa10ded8c62eeb64c947dd037efdaba08d94'
+            'cd8640a40a8423464e7f9cad3c814bbe073c72646abb4f98b768be55f2096182'
+            '0fa431a8663984d87f44dbc9ceaa2602abf5a3254ac52bfde27a6f517c4ee018')
 
 prepare() {
   cd "${srcdir}"
-  mv GeoLite2-Country-${pkgver}.mmdb GeoLite2-Country.mmdb
+
+  for _db in GeoLite2-{City,Country,ASN}; do
+    tar --strip-components=1 -xf ${_db}-${pkgver}.tar.gz --wildcards "*/${_db}.mmdb"
+  done
+
+  tar --strip-components=1 -xf GeoLite2-ASN-${pkgver}.tar.gz --wildcards "*/COPYRIGHT.txt" "*/LICENSE.txt"
 }
 
 package() {
   cd "${srcdir}"
 
-  install -d "${pkgdir}${MINGW_PREFIX}/share/GeoIP2"
-  install -m644 -t "${pkgdir}${MINGW_PREFIX}/share/GeoIP2" GeoLite2-Country.mmdb
+  install -d "${pkgdir}${MINGW_PREFIX}/share/GeoIP"
+  install -m644 -t "${pkgdir}${MINGW_PREFIX}/share/GeoIP" GeoLite2-{City,Country,ASN}.mmdb
+
+  install -Dm644 COPYRIGHT.txt "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYRIGHT.txt"
+  install -Dm644 LICENSE.txt "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE.txt"
 }

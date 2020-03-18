@@ -1,0 +1,37 @@
+# Maintainer: Peter Budai <peterbudai@hotmail.com>
+
+_realname=send2trash
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=1.5.0
+pkgrel=1
+pkgdesc="Send file to trash natively (mingw-w64)"
+url="https://github.com/hsoft/send2trash"
+arch=('any')
+license=('BSD')
+depends=("${MINGW_PACKAGE_PREFIX}-python")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+source=(${_realname}-${pkgver}.tar.gz::https://github.com/hsoft/${_realname}/archive/${pkgver}.tar.gz)
+sha256sums=('7cebc0ffc8b6d6e553bce9c6bb915614610ba2dec17c2f0643b1b97251da2a41')
+
+prepare() {
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+}
+
+build() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1 --skip-build
+
+  install -D -m644 "LICENSE" ${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE
+}

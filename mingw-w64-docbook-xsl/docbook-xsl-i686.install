@@ -1,28 +1,31 @@
 MINGW_INSTALL=mingw32
 MINGW_XML_CATALOG=${MINGW_INSTALL}/etc/xml
 
+_xmlcatalog() {
+  /${MINGW_INSTALL}/bin/xmlcatalog --noout "$@" ${MINGW_XML_CATALOG}/catalog
+}
+
 post_install() {
-  if [ ! -f ${MINGW_XML_CATALOG}/catalog ]; then
-    ${MINGW_INSTALL}/bin/xmlcatalog --noout --create ${MINGW_XML_CATALOG}/catalog
-  fi
-  _NEW=`echo $1 | sed 's|\(.*\)\-.*|\1|'`
+  [[ -f /${MINGW_XML_CATALOG}/catalog ]] || _xmlcatalog --create
 
-  ${MINGW_INSTALL}/bin/xmlcatalog --noout --add delegateURI "http://docbook.sourceforge.net/release/xsl/" "./docbook-xsl.xml" ${MINGW_XML_CATALOG}/catalog
-  ${MINGW_INSTALL}/bin/xmlcatalog --noout --add delegateSystem "http://docbook.sourceforge.net/release/xsl/" "./docbook-xsl.xml" ${MINGW_XML_CATALOG}/catalog
+  local x
+  for x in "delegateSystem" "delegateURI"; do
+    _xmlcatalog --add $x \
+      "http://docbook.sourceforge.net/release/xsl/" \
+      "./docbook-xsl" 
 
-  if [ ! -f ${MINGW_XML_CATALOG}/docbook-xsl.xml ]; then
-    ${MINGW_INSTALL}/bin/xmlcatalog --noout --create ${MINGW_XML_CATALOG}/docbook-xsl.xml
-  fi
+    _xmlcatalog --add $x \
+      "http://docbook.sourceforge.net/release/xsl-ns/" \
+      "./docbook-xsl" 
 
-  ${MINGW_INSTALL}/bin/xmlcatalog --noout --add delegateURI \
-    "http://docbook.sourceforge.net/release/xsl/" \
-    "../../share/xml/docbook/xsl-stylesheets-${_NEW}/catalog.xml" \
-    ${MINGW_XML_CATALOG}/docbook-xsl.xml
+    _xmlcatalog --add $x \
+      "http://cdn.docbook.org/release/xsl/" \
+      "./docbook-xsl" 
 
-  ${MINGW_INSTALL}/bin/xmlcatalog --noout --add delegateSystem \
-    "http://docbook.sourceforge.net/release/xsl/" \
-    "../../share/xml/docbook/xsl-stylesheets-${_NEW}/catalog.xml" \
-    ${MINGW_XML_CATALOG}/docbook-xsl.xml
+    _xmlcatalog --add $x \
+      "http://cdn.docbook.org/release/xsl-nons/" \
+      "./docbook-xsl" 
+  done
 }
 
 post_upgrade() {
@@ -31,7 +34,12 @@ post_upgrade() {
 }
 
 post_remove() {
-  _OLD=`echo $1 | sed 's|\(.*\)\-.*|\1|'`
-  ${MINGW_INSTALL}/bin/xmlcatalog --noout --del "http://docbook.sourceforge.net/release/xsl/" ${MINGW_XML_CATALOG}/catalog
+  local old=${1%-*}
+  _xmlcatalog --del ../../share/xml/docbook/xsl-stylesheets-$old
+  _xmlcatalog --del "http://docbook.sourceforge.net/release/xsl/"
+  _xmlcatalog --del "http://docbook.sourceforge.net/release/xsl-ns/"
   rm -f ${MINGW_XML_CATALOG}/docbook-xsl.xml
+  if (( $(vercmp $1 1.79.2-4) >= 0 )); then
+    _xmlcatalog --del ../../share/xml/docbook/xsl-stylesheets-$old-nons
+  fi
 }

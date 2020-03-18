@@ -3,12 +3,13 @@
 _realname=gmime
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=3.0.0
-pkgrel=2
+pkgver=3.2.6
+pkgrel=1
 arch=('any')
 pkgdesc="Glorious MIME Utility Library (mingw-w64)"
 options=(strip staticlibs)
 depends=("${MINGW_PACKAGE_PREFIX}-glib2"
+         "${MINGW_PACKAGE_PREFIX}-gpgme"
          "${MINGW_PACKAGE_PREFIX}-libiconv")
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
              "${MINGW_PACKAGE_PREFIX}-gobject-introspection"
@@ -18,11 +19,10 @@ makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
 license=("LGPL 2.1")
 url="https://www.gnome.org"
 source=(https://download.gnome.org/sources/${_realname}/${pkgver%.*}/${_realname}-${pkgver}.tar.xz)
-sha256sums=('9d4874fb66d8b09d79ba144d2fbcab6157cf5986268fc4fdc9d98daa12c1a791')
+sha256sums=('abff194c7c4802fba2e233890d09dde8bf7170c3ad5e13000601c8d5b3c44717')
 
 prepare() {
   cd "${srcdir}"/${_realname}-${pkgver}
-
   autoreconf -f -i
 }
 
@@ -31,23 +31,25 @@ build() {
   mkdir -p build-${MINGW_CHOST}
   cd build-${MINGW_CHOST}
 
-  mkdir -p docs/reference/html
-  cp -rf ../${_realname}-${pkgver}/docs/reference/html/* docs/reference/html
-
   ../${_realname}-${pkgver}/configure \
     --host=${MINGW_CHOST} \
     --target=${MINGW_CHOST} \
     --build=${MINGW_CHOST} \
     --prefix=${MINGW_PREFIX} \
     --libexecdir=${MINGW_PREFIX}/lib \
-    --enable-gtk-doc
+    --enable-gtk-doc \
+    --disable-vala
 
   make
 }
 
 package() {
-  cd "$srcdir/build-${MINGW_CHOST}"
+  cd "${srcdir}/build-${MINGW_CHOST}"
   make DESTDIR=${pkgdir} install
-
   install -Dm644 "${srcdir}/${_realname}-${pkgver}/COPYING" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING"
+  # fix hard-coded pathes in .pc files
+  local PREFIX_WIN=$(cygpath -wm ${MINGW_PREFIX})
+  for _f in "${pkgdir}${MINGW_PREFIX}"\/lib\/pkgconfig\/*.pc; do
+    sed -e "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" -i ${_f}
+  done
 }

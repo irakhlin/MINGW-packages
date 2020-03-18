@@ -2,80 +2,49 @@
 
 _realname=prompt_toolkit
 pkgbase=mingw-w64-python-${_realname}
-pkgname=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}" "${MINGW_PACKAGE_PREFIX}-python2-${_realname}")
-pkgver=1.0.14
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+pkgver=3.0.4
 pkgrel=1
-pkgdesc="Library for building powerful interactive command lines in Python"
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}=${pkgver}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgdesc="Library for building powerful interactive command lines in Python (mingw-w64)"
 url="https://github.com/jonathanslenders/python-prompt-toolkit"
 arch=('any')
 license=('BSD')
-makedepends=("${MINGW_PACKAGE_PREFIX}-python3-setuptools"
-             "${MINGW_PACKAGE_PREFIX}-python2-setuptools")
-checkdepends=("${MINGW_PACKAGE_PREFIX}-python3-pytest"
-              "${MINGW_PACKAGE_PREFIX}-python2-pytest")
+depends=("${MINGW_PACKAGE_PREFIX}-python-pygments"
+         "${MINGW_PACKAGE_PREFIX}-python-six"
+         "${MINGW_PACKAGE_PREFIX}-python-wcwidth")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-pytest")
 source=(python-prompt-toolkit-${pkgver}.tar.gz::https://github.com/jonathanslenders/python-prompt-toolkit/archive/${pkgver}.tar.gz)
-sha256sums=('ac04b23e73a5cf97551d17f4007674262a023e4f574d3c4cfe8c1383ec9764ec')
+sha256sums=('7195a92a8d7e82ef097c1cb97bc33c0570af9c61dead5d06a80f2361fc68507d')
 
 prepare() {
-  cp -a python-prompt-toolkit-${pkgver}{,-py2}
+  cd "${srcdir}"
+  rm -rf python-build-${CARCH} | true
+  cp -r "python-prompt-toolkit-${pkgver}" "python-build-${CARCH}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
 }
 
 build() {
-  cd ${srcdir}/python-prompt-toolkit-${pkgver}
-  python3 setup.py build
-
-  cd ${srcdir}/python-prompt-toolkit-${pkgver}-py2
-  python2 setup.py build
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
 }
 
-#check() {
-#    cd ${srcdir}/python-prompt-toolkit-${pkgver}
-#    py.test-3.6
+check() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/py.test || warning "Tests failed"
+}
 
-#    cd ${srcdir}/python-prompt-toolkit-${pkgver}-py2
-#    py.test-2.7
-#}
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
 
-package_python3-prompt_toolkit() {
-  depends=(
-    "${MINGW_PACKAGE_PREFIX}-python3-pygments"
-    "${MINGW_PACKAGE_PREFIX}-python3-six"
-    "${MINGW_PACKAGE_PREFIX}-python3-wcwidth"
-  )
-
-  cd ${srcdir}/python-prompt-toolkit-${pkgver}
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python3 setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1
-  install -Dm644 LICENSE ${pkgdir}${MINGW_PREFIX}/share/licenses/python3-${_realname}/LICENSE
+    ${MINGW_PREFIX}/bin/python setup.py install --root=${pkgdir} \
+   --prefix=${MINGW_PREFIX} --optimize=1 --skip-build
+
+  install -Dm644 LICENSE ${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE
 }
-
-package_python2-prompt_toolkit() {
-  depends=(
-    "${MINGW_PACKAGE_PREFIX}-python2-pygments"
-    "${MINGW_PACKAGE_PREFIX}-python2-six"
-    "${MINGW_PACKAGE_PREFIX}-python2-wcwidth"
-  )
-
-  cd ${srcdir}/python-prompt-toolkit-${pkgver}-py2
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python2 setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1
-  install -Dm644 LICENSE ${pkgdir}${MINGW_PREFIX}/share/licenses/python2-${_realname}/LICENSE
-}
-
-package_mingw-w64-i686-python2-prompt_toolkit() {
-  package_python2-prompt_toolkit
-}
-
-package_mingw-w64-i686-python3-prompt_toolkit() {
-  package_python3-prompt_toolkit
-}
-
-package_mingw-w64-x86_64-python2-prompt_toolkit() {
-  package_python2-prompt_toolkit
-}
-
-package_mingw-w64-x86_64-python3-prompt_toolkit() {
-  package_python3-prompt_toolkit
-}
-
-# vim:set ts=2 sw=2 et:

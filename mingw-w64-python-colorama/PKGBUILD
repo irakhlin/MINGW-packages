@@ -3,66 +3,55 @@
 
 _realname=colorama
 pkgbase=mingw-w64-python-${_realname}
-pkgname=("${MINGW_PACKAGE_PREFIX}-python2-${_realname}" "${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
-pkgver=0.3.9
-pkgrel=2
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=0.4.3
+pkgrel=1
 pkgdesc="Python API for cross-platform colored terminal text (mingw-w64)"
 arch=('any')
 license=('BSD')
 url="https://pypi.python.org/pypi/colorama"
-makedepends=("${MINGW_PACKAGE_PREFIX}-python2-setuptools"
-             "${MINGW_PACKAGE_PREFIX}-python3-setuptools")
+depends=("${MINGW_PACKAGE_PREFIX}-python")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-mock")
 options=('staticlibs')
-source=("https://pypi.org/packages/source/c/${_realname}/${_realname}-${pkgver}.tar.gz")
-sha256sums=('48eb22f4f8461b1df5734a074b57042430fb06e1d61bd1e11b078c0fe6d7a1f1')
+source=("${_realname}-${pkgver}.tar.gz::https://github.com/tartley/colorama/archive/${pkgver}.tar.gz")
+sha256sums=('0d93fc83f70c926cd8437b488ea9c8741f9df2ac2d2d681c40783d5ceef98e2b')
 
-prepare() {
-  cd ${srcdir}
-  cp -r colorama-${pkgver} python2-build
-  cp -r colorama-${pkgver} python3-build
-}
-
-build() {
-  cd "${srcdir}"
-  for builddir in python{2,3}-build; do
-    pushd ${builddir}
-    ${MINGW_PREFIX}/bin/${builddir%-build} setup.py build
-    popd
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
   done
 }
 
-package_python2-colorama() {
-  depends=("${MINGW_PACKAGE_PREFIX}-python2")
+prepare() {
+  cd "${srcdir}"
 
-  cd "${srcdir}/python2-build"
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+}
+
+build() {
+  msg "Python build for ${CARCH}"  
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  msg "Python test for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python -m unittest discover -p *_test.py || warning "Tests failed"
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-    ${MINGW_PREFIX}/bin/python2 setup.py install --prefix=${MINGW_PREFIX} --root="${pkgdir}" -O1
+   ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
 
-  install -Dm644 LICENSE.txt "${pkgdir}${MINGW_PREFIX}/share/licenses/python2-${_realname}/COPYING"
-}
-
-package_python3-colorama() {
-  depends=("${MINGW_PACKAGE_PREFIX}-python3")
-
-  cd "${srcdir}/python3-build"
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-    ${MINGW_PREFIX}/bin/python3 setup.py install --prefix=${MINGW_PREFIX} --root="${pkgdir}" -O1
-
-  install -Dm644 LICENSE.txt "${pkgdir}${MINGW_PREFIX}/share/licenses/python3-${_realname}/COPYING"
-}
-
-package_mingw-w64-i686-python2-colorama() {
-  package_python2-colorama
-}
-
-package_mingw-w64-i686-python3-colorama() {
-  package_python3-colorama
-}
-
-package_mingw-w64-x86_64-python2-colorama() {
-  package_python2-colorama
-}
-
-package_mingw-w64-x86_64-python3-colorama() {
-  package_python3-colorama
+  install -Dm644 LICENSE.txt "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/COPYING"
 }

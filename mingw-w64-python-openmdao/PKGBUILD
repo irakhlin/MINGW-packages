@@ -2,86 +2,53 @@
 
 _realname=openmdao
 pkgbase=mingw-w64-python-${_realname}
-pkgname=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}"
-         "${MINGW_PACKAGE_PREFIX}-python2-${_realname}")
-pkgver=1.7.3
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=3.0.0
 pkgrel=1
-pkgdesc="An open-source MDAO framework written in Python. (mingw-w64)"
+pkgdesc="An open-source MDAO framework written in Python (mingw-w64)"
 arch=('any')
 license=('apache')
 url="https://openmdao.org/"
-makedepends=("${MINGW_PACKAGE_PREFIX}-python3-setuptools"
-             "${MINGW_PACKAGE_PREFIX}-python2-setuptools")
+depends=("${MINGW_PACKAGE_PREFIX}-python-numpy"
+         "${MINGW_PACKAGE_PREFIX}-python-scipy"
+         "${MINGW_PACKAGE_PREFIX}-python-networkx"
+         "${MINGW_PACKAGE_PREFIX}-python-sqlitedict"
+         "${MINGW_PACKAGE_PREFIX}-python-pyparsing"
+         "${MINGW_PACKAGE_PREFIX}-python-six")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
 source=("OpenMDAO-${pkgver}.tar.gz::https://github.com/OpenMDAO/OpenMDAO/archive/${pkgver}.tar.gz")
-sha256sums=('5425184fcb08d685997cfffbb12bb369e306dec3a45e66df76925de10f426b18')
-
+sha256sums=('833612a704b4d71d58c5eaaf791c617dcec7c10fc8ae2f518ef8d85e72162e25')
 
 prepare() {
-  cp -a OpenMDAO-${pkgver}{,-py2}
+  cd "${srcdir}/OpenMDAO-${pkgver}"
+
+  sed -i "s|from distutils.core import setup|from setuptools import setup|" setup.py
+
+  cd "${srcdir}"
+  rm -rf "python-build-${CARCH}" | true
+  cp -r "OpenMDAO-${pkgver}" "python-build-${CARCH}"
 }
 
 build() {
-  cd ${srcdir}/OpenMDAO-${pkgver}
-  python3 setup.py build
-
-  cd ${srcdir}/OpenMDAO-${pkgver}-py2
-  python2 setup.py build
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
 }
 
-#check() {
-#  cd ${srcdir}/OpenMDAO-${_realname}-${pkgver}
-#  nosetests-3.5
-#
-#  cd ${srcdir}/OpenMDAO-${_realname}-${pkgver}-py2
-#  nosetests-2.7
-#}
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
 
-package_python3-openmdao() {
-  depends=(
-    "${MINGW_PACKAGE_PREFIX}-python3-numpy>=1.9.2"
-    "${MINGW_PACKAGE_PREFIX}-python3-scipy"
-    "${MINGW_PACKAGE_PREFIX}-python3-networkx>=1.9.1"
-    "${MINGW_PACKAGE_PREFIX}-python3-sqlitedict"
-    "${MINGW_PACKAGE_PREFIX}-python3-pyparsing"
-    "${MINGW_PACKAGE_PREFIX}-python3-six"
-  )
-
-  cd OpenMDAO-${pkgver}
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python3 setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1
-  install -D -m644 LICENSE.txt "${pkgdir}${MINGW_PREFIX}/share/licenses/python3-${_realname}/LICENSE"
+  ${MINGW_PREFIX}/bin/python setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1 --skip-build
+  
+  install -D -m644 LICENSE.txt "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE"
+
+  local PREFIX_WIN=$(cygpath -wm ${MINGW_PREFIX})
+  # fix python command in files
+  for _f in "${pkgdir}${MINGW_PREFIX}"/bin/*.py; do
+    sed -e "s|/usr/bin/env |${MINGW_PREFIX}|g" \
+        -e "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" -i ${_f}
+  done
 }
-
-package_python2-openmdao() {
-  depends=(
-    "${MINGW_PACKAGE_PREFIX}-python2-numpy>=1.9.2"
-    "${MINGW_PACKAGE_PREFIX}-python2-scipy"
-    "${MINGW_PACKAGE_PREFIX}-python2-networkx>=1.9.1"
-    "${MINGW_PACKAGE_PREFIX}-python2-sqlitedict"
-    "${MINGW_PACKAGE_PREFIX}-python2-pyparsing"
-    "${MINGW_PACKAGE_PREFIX}-python2-six"
-  )
-
-  cd OpenMDAO-${pkgver}-py2
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python2 setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1
-  install -D -m644 LICENSE.txt "${pkgdir}${MINGW_PREFIX}/share/licenses/python2-${_realname}/LICENSE"
-}
-
-package_mingw-w64-i686-python2-openmdao() {
-  package_python2-openmdao
-}
-
-package_mingw-w64-i686-python3-openmdao() {
-  package_python3-openmdao
-}
-
-package_mingw-w64-x86_64-python2-openmdao() {
-  package_python2-openmdao
-}
-
-package_mingw-w64-x86_64-python3-openmdao() {
-  package_python3-openmdao
-}
-
-# vim:set ts=2 sw=2 et:

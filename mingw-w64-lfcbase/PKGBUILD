@@ -3,22 +3,32 @@
 _realname=lfcbase
 pkgbase=mingw-w64-${_realname}
 pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}")
-pkgver=1.10.0
+pkgver=1.14.1
 pkgrel=1
 pkgdesc="LFC C++ base classes (mingw-w64)"
 arch=('any')
 url='http://www.lemke-it.com/'
 license=('GPL3')
+depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs"
+        "${MINGW_PACKAGE_PREFIX}-ncurses")
+
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc")
 
 source=("http://www.lemke-it.com/${_realname}-${pkgver}.tar.gz")
 
-sha256sums=("f513aed43078e542013c74009dba5316aa57bb69a46b327eaaf28256f0736ff1")
+sha256sums=("06321574285d390075ce661173331fda46743bb1d30f251fe67cc185a0f109b8")
 
 prepare() {
+  # for mingw build, we have to patch the tap-driver to filter out windows carrige returns from the test program output
+  # yes, this is an ugly patch
+  cat $srcdir/${_realname}-${pkgver}/build-aux/tap-driver.sh  | sed "s/LC_ALL\=C/sed \'s\/\\\\r\/\/g\'| LC_ALL=C/" > $srcdir/${_realname}-${pkgver}/build-aux/tap-driver-patch.sh 
+  mv $srcdir/${_realname}-${pkgver}/build-aux/tap-driver-patch.sh $srcdir/${_realname}-${pkgver}/build-aux/tap-driver.sh 
   cd $srcdir/${_realname}-${pkgver}
 }
 
 build() {
+
+  export CXXFLAGS="-DLFCNOCURSES -DDISABLE_SYSLOG"
   cd "$srcdir"/${_realname}-${pkgver}
   [[ -d "${srcdir}"/build-${CARCH} ]] && rm -rf "${srcdir}"/build-${CARCH}
   mkdir -p "${srcdir}"/build-${CARCH} && cd "${srcdir}"/build-${CARCH}
@@ -32,6 +42,11 @@ build() {
 
   make
 
+  ${MINGW_PREFIX}/bin/gcc -shared \
+    -Wl,--out-implib,liblfcbase.dll.a \
+    -o liblfcbase-0.dll \
+    ${srcdir}/build-${CARCH}/src/*.o \
+    -lsystre -lws2_32 -lpthread -lstdc++
 }
 
 check() {
@@ -43,4 +58,7 @@ package() {
   cd "${srcdir}"/build-${CARCH}
   make install DESTDIR="${pkgdir}"
 
+  mkdir -p "${pkgdir}"${MINGW_PREFIX}/{bin,lib}
+  install -m 0755 liblfcbase-0.dll "${pkgdir}${MINGW_PREFIX}/bin"
+  install -m 0644 liblfcbase.dll.a "${pkgdir}${MINGW_PREFIX}/lib"
 }

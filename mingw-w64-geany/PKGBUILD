@@ -8,30 +8,30 @@
 _realname=geany
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=1.31
-pkgrel=1
+pkgver=1.36.0
+pkgrel=2
 pkgdesc='Fast and lightweight IDE (mingw-w64)'
 arch=('any')
 url='https://www.geany.org/'
 license=('GPL')
-depends=("${MINGW_PACKAGE_PREFIX}-gtk2" 
-         "${MINGW_PACKAGE_PREFIX}-adwaita-icon-theme")
+depends=("${MINGW_PACKAGE_PREFIX}-gtk3"
+         "${MINGW_PACKAGE_PREFIX}-adwaita-icon-theme"
+         "${MINGW_PACKAGE_PREFIX}-python3")
 makedepends=('perlxml'
              'intltool'
              "${MINGW_PACKAGE_PREFIX}-gcc"
-             "${MINGW_PACKAGE_PREFIX}-python2-docutils")
-optdepends=("${MINGW_PACKAGE_PREFIX}-geany-plugins: various extra features"
-            #'vte: terminal support'
-            "${MINGW_PACKAGE_PREFIX}-python2")
+             "${MINGW_PACKAGE_PREFIX}-python3-docutils")
+optdepends=("${MINGW_PACKAGE_PREFIX}-geany-plugins: various extra features")
 install="${_realname}-${CARCH}.install"
-source=(https://download.geany.org/${_realname}-${pkgver}.tar.bz2{,.sig}
+source=(#https://download.geany.org/${_realname}-${pkgver}.tar.bz2{,.sig}
+        ${_realname}-${pkgver}.tar.gz::https://github.com/geany/geany/archive/${pkgver}.tar.gz
         "0001-Fix-windres-invocation.patch" # we don't yet have prefixed windres sadly
         "0002-Use-FHS.patch") # even upstream says FIXME :)
-validpgpkeys=('ACA0246889FB96B63382111724CCD8550E5D1CAE')
-sha256sums=('30fdb906bb76c4251a8bcf83ee267db28c26ef6ab867668a782cec1164a3aba5'
-            'SKIP'
-            '5e4f8976c5604a8855dff6d7fc9666914a7bac43a2283d8ad2941923ef1494fc'
-            'f655d8e0abc0f03ce4249dfcd95029754314d346e08182045daffb34798df613')
+validpgpkeys=('ACA0246889FB96B63382111724CCD8550E5D1CAE'
+              '457990C86F91F33DE05EBF1BCC03633F700990F2')
+sha256sums=('fb5af274c75509d9104a3fc4c0dfc070b9cebebcaaffdfe1d1410684bf42ac30'
+            '9f5781f0ac781dcbad74dd5ac7c56f5991dbe98c681dc7560f9edff88f633311'
+            'd5928b6afb63590657e9a242285396a44dc2bab7e58fed4e34272937210a923e')
 
 prepare() {
   cd "${srcdir}/${_realname}-${pkgver}"
@@ -44,6 +44,8 @@ prepare() {
   
   patch -p1 -i "${srcdir}/0001-Fix-windres-invocation.patch"
   patch -p1 -i "${srcdir}/0002-Use-FHS.patch"
+  
+  NOCONFIGURE=1 ./autogen.sh
 }
 
 build() {
@@ -60,7 +62,10 @@ build() {
     --host=${MINGW_CHOST} \
     --target=${MINGW_CHOST} \
     --build=${MINGW_CHOST} \
-    --prefix=${MINGW_PREFIX}
+    --prefix=${MINGW_PREFIX} \
+    --enable-gtk3 \
+    --disable-pdf-docs \
+    --disable-api-docs
 
   make
 }

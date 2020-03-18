@@ -1,0 +1,51 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=jedi
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=0.16.0
+pkgrel=1
+pkgdesc="Awesome autocompletion for python (mingw-w64)"
+arch=('any')
+url='https://github.com/davidhalter/jedi'
+license=('MIT')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-parso")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools"
+             "git")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-pytest")
+options=('staticlibs' 'strip' '!debug')
+source=("https://pypi.python.org/packages/source/${_realname:0:1}/${_realname}/${_realname}-${pkgver}.tar.gz")
+sha256sums=('d5c871cb9360b414f981e7072c52c33258d598305280fef91c6cae34739d65d5')
+
+prepare() {
+  cd "${srcdir}"
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+}
+
+build() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/pytest test || warning 'Ignoring test_pyc failure'
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  install -Dm644 LICENSE.txt "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE.txt"
+}

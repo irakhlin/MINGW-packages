@@ -1,0 +1,86 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=testrepository
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=0.0.20
+pkgrel=1
+pkgdesc="A repository of test results. (mingw-w64)"
+arch=('any')
+license=('Apache' 'BSD')
+url="https://launchpad.net/testrepository"
+depends=("${MINGW_PACKAGE_PREFIX}-python")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-fixtures"
+             "${MINGW_PACKAGE_PREFIX}-python-setuptools"
+             "${MINGW_PACKAGE_PREFIX}-python-subunit"
+             "${MINGW_PACKAGE_PREFIX}-python-testtools")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-testresources"
+              "${MINGW_PACKAGE_PREFIX}-python-pytz"
+              "${MINGW_PACKAGE_PREFIX}-python-testscenarios")
+install=${_realname}3-${CARCH}.install
+options=('staticlibs' 'strip' '!debug')
+source=("https://pypi.python.org/packages/source/t/testrepository/testrepository-${pkgver}.tar.gz")
+sha512sums=('df14500e2b27b6f39d9d4c4f42961efd63dfe25186e561eb1678952a8ab9311f17c36b78819fea33e0ac879c47a33d45c31ff58be017609c8a6157905ee712d6')
+
+
+# Helper macros to help make tasks easier #
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
+
+del_file_exists() {
+  for _fname in "$@"
+  do
+    if [ -f $_fname ]; then
+      rm -rf $_fname
+    fi
+  done
+}
+# =========================================== #
+
+prepare() {
+  cd "${srcdir}"
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+}
+
+build() {
+  msg "Python build for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  msg "Python test for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+
+  msg "  init - Python test for ${CARCH}"
+  PYTHON=${MINGW_PREFIX}/bin/python ${MINGW_PREFIX}/bin/python ./testr init
+  msg "  run - Python test for ${CARCH}"
+  PYTHON=${MINGW_PREFIX}/bin/python ${MINGW_PREFIX}/bin/python ./testr --parallel || warning "Tests failed"
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  #  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/COPYING"
+
+  local PREFIX_WIN=$(cygpath -wm ${MINGW_PREFIX})
+  for _f in "${pkgdir}${MINGW_PREFIX}"/bin/*; do
+    sed -e "s|/usr/bin/env |${MINGW_PREFIX}|g" \
+        -e "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" -i ${_f}
+  done
+}

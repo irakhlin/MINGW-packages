@@ -1,98 +1,55 @@
 # Contributor: Runar Tenfjord < runar dot tenfjord at gmail dot com >
 
 _realname=scipy
-pkgbase=mingw-w64-python-${_realname}
-pkgname=("${MINGW_PACKAGE_PREFIX}-python2-${_realname}" "${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
-pkgver=0.19.0
+pkgbase=mingw-w64-python3-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=1.4.1
 pkgrel=1
-pkgdesc="SciPy is open-source software for mathematics, science, and engineering. (mingw-w64)"
+pkgdesc="SciPy is open-source software for mathematics, science, and engineering (mingw-w64)"
 arch=('any')
 url="https://www.scipy.org/"
 license=('BSD')
+depends=("${MINGW_PACKAGE_PREFIX}-gcc-libgfortran"
+         "${MINGW_PACKAGE_PREFIX}-openblas"
+         "${MINGW_PACKAGE_PREFIX}-python-numpy")
+optdepends=("${MINGW_PACKAGE_PREFIX}-python-nose: testsuite")
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc-fortran"
-             "${MINGW_PACKAGE_PREFIX}-openblas"
-             "${MINGW_PACKAGE_PREFIX}-python2-numpy"
-             "${MINGW_PACKAGE_PREFIX}-python3-numpy"
-             "${MINGW_PACKAGE_PREFIX}-python2-setuptools"
-             "${MINGW_PACKAGE_PREFIX}-python3-setuptools")
-source=(https://github.com/scipy/scipy/releases/download/v${pkgver}/${_realname}-${pkgver}.tar.xz)
-sha256sums=('ed52232afb2b321a4978e39040d94bf81af90176ba64f58c4499dc305a024437')
+             "${MINGW_PACKAGE_PREFIX}-python-setuptools")
+source=(${_realname}-${pkgver}.tar.gz::https://github.com/scipy/scipy/releases/download/v${pkgver}/${_realname}-${pkgver}.tar.gz
+        001-build-fix.patch)
+sha256sums=('dee1bbf3a6c8f73b6b218cb28eed8dd13347ea2f87d572ce19b289d6fd3fbc59'
+            '6753ce337da82b660bd4bfc11119e9f79b25ac337c5c146ae1171e795aaca417')
 
 prepare() {
-  cp -a ${_realname}-${pkgver} ${_realname}-py2-${pkgver}
-  cp -a ${_realname}-${pkgver} ${_realname}-py3-${pkgver}
+  cd ${_realname}-${pkgver}
+  patch -p1 -i ${srcdir}/001-build-fix.patch
 
-  cd ${_realname}-py2-${pkgver}
-  sed -e "s|#![ ]*/usr/bin/python$|#!/usr/bin/python2|" \
-    -e "s|#![ ]*/usr/bin/env python$|#!/usr/bin/env python2|" \
-    -e "s|#![ ]*/bin/env python$|#!/usr/bin/env python2|" \
-    -i $(find . -name '*.py')
+  cd "${srcdir}"
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
 }
 
 build() {
+  cd ${srcdir}/python-build-${CARCH}
   LDFLAGS="${LDFLAGS} -Wall -shared"
-
-  # build for python2
-  cd ${srcdir}/${_realname}-py2-${pkgver}
-  local result="fail"
-  while [ "$result" = "fail" ]; do
-    MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-    ${MINGW_PREFIX}/bin/python2 setup.py config_fc --fcompiler=gnu95 build && result="success"
-  done
-
-  # build for python3
-  cd ${srcdir}/${_realname}-py3-${pkgver}
   result="fail"
   while [ "$result" = "fail" ]; do
     MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-    ${MINGW_PREFIX}/bin/python3 setup.py config_fc --fcompiler=gnu95 build && result="success"
+    ${MINGW_PREFIX}/bin/python setup.py config_fc --fcompiler=gnu95 build && result="success"
   done
 }
 
-package_python2-scipy() {
-  depends=("${MINGW_PACKAGE_PREFIX}-openblas"
-           "${MINGW_PACKAGE_PREFIX}-python2-numpy")
-  optdepends=("${MINGW_PACKAGE_PREFIX}-python2-nose: testsuite")
-
-  cd ${_realname}-py2-${pkgver}
+package() {
+  cd python-build-${CARCH}
   LDFLAGS="${LDFLAGS} -Wall -shared"
 
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python2 setup.py config_fc --fcompiler=gnu95 install \
-    --prefix=${MINGW_PREFIX} --root=${pkgdir} --optimize=1
+  ${MINGW_PREFIX}/bin/python setup.py config_fc --fcompiler=gnu95 install \
+    --prefix=${MINGW_PREFIX} --root=${pkgdir} --optimize=1  --skip-build
 
   install -Dm644 LICENSE.txt \
-    "${pkgdir}${MINGW_PREFIX}/share/licenses/python2-${_realname}/LICENSE"
-}
-
-package_python3-scipy() {
-  depends=("${MINGW_PACKAGE_PREFIX}-openblas"
-           "${MINGW_PACKAGE_PREFIX}-python3-numpy")
-  optdepends=("${MINGW_PACKAGE_PREFIX}-python3-nose: testsuite")
-
-  cd ${_realname}-py3-${pkgver}
-  LDFLAGS="${LDFLAGS} -Wall -shared"
-
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python3 setup.py config_fc --fcompiler=gnu95 install \
-    --prefix=${MINGW_PREFIX} --root=${pkgdir} --optimize=1
-
-  install -Dm644 LICENSE.txt \
-    "${pkgdir}${MINGW_PREFIX}/share/licenses/python3-${_realname}/LICENSE"
-}
-
-package_mingw-w64-i686-python2-scipy() {
-  package_python2-scipy
-}
-
-package_mingw-w64-i686-python3-scipy() {
-  package_python3-scipy
-}
-
-package_mingw-w64-x86_64-python2-scipy() {
-  package_python2-scipy
-}
-
-package_mingw-w64-x86_64-python3-scipy() {
-  package_python3-scipy
+    "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE"
 }

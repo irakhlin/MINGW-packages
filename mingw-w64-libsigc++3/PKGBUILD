@@ -1,0 +1,46 @@
+# Maintainer: Alexey Pavlov <alexpux@gmail.com>
+
+_realname=libsigc++
+pkgbase=mingw-w64-${_realname}3
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}3"
+pkgver=3.0.0
+pkgrel=1
+pkgdesc="Libsigc++ implements a full callback system for use in widget libraries - V3 (mingw-w64)"
+arch=('any')
+url="https://libsigc.sourceforge.io/"
+license=("LGPL")
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc" "${MINGW_PACKAGE_PREFIX}-pkg-config")
+depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs")
+options=('staticlibs' 'strip')
+source=("https://download.gnome.org/sources/libsigc++/${pkgver%.*}/${_realname}-${pkgver}.tar.xz"
+        "0001-Empty-connections-can-be-safely-copied-now.patch")
+sha256sums=('50a0855c1eb26e6044ffe888dbe061938ab4241f96d8f3754ea7ead38ab8ed06'
+            '97b7d0521265fdc54436eb469a4efbb6692921b9e8ecf29614280e0f4c7e9f96')
+
+prepare() {
+  cd "${srcdir}/${_realname}-${pkgver}"
+
+  # https://github.com/libsigcplusplus/libsigcplusplus/commit/138510d40
+  patch -p1 -i "${srcdir}"/0001-Empty-connections-can-be-safely-copied-now.patch
+}
+
+build() {
+  [[ -d "${srcdir}/build-${MINGW_CHOST}" ]] && rm -rf "${srcdir}/build-${MINGW_CHOST}"
+  mkdir -p "${srcdir}/build-${MINGW_CHOST}" && cd "${srcdir}/build-${MINGW_CHOST}"
+  ../${_realname}-${pkgver}/configure \
+    --prefix=${MINGW_PREFIX} \
+    --build=${MINGW_CHOST} \
+    --host=${MINGW_CHOST} \
+    --enable-static \
+    --enable-shared \
+    --disable-documentation
+
+  make
+}
+
+package() {
+  cd "${srcdir}/build-${MINGW_CHOST}"
+  make DESTDIR="${pkgdir}" install
+
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}/COPYING" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}3/COPYING"
+}

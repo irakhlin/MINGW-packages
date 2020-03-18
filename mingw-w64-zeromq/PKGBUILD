@@ -3,25 +3,35 @@
 _realname=zeromq
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=4.2.2
+pkgver=4.3.2
+_cppzmqver=4.5.0
 pkgrel=1
 pkgdesc="Fast messaging system built on sockets, C and C++ bindings. aka 0MQ, ZMQ (mingw-w64)"
 arch=('any')
-url="http://www.zeromq.org"
+url="https://www.zeromq.org/"
 license=("LGPL")
 depends=("${MINGW_PACKAGE_PREFIX}-libsodium")
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc")
-options=('staticlibs' 'strip' '!buildflags')
+options=('staticlibs' 'strip')
 source=("https://github.com/zeromq/libzmq/releases/download/v${pkgver}/${_realname}-${pkgver}.tar.gz"
-        "https://raw.githubusercontent.com/zeromq/cppzmq/1fdf3d1dfe1491209b0d7c71e38b2f1e3f801ac9/zmq.hpp")
-sha256sums=('5b23f4ca9ef545d5bd3af55d305765e3ee06b986263b31967435d285a3e6df6b'
-            '88d5978e7c7220e71aa7aa255081e7e01502d18d89f2eb9d42b96a43bb642293')
+        "zmq-${_cppzmqver}.hpp::https://raw.githubusercontent.com/zeromq/cppzmq/v${_cppzmqver}/zmq.hpp"
+        "zmq_addon-${_cppzmqver}.hpp::https://raw.githubusercontent.com/zeromq/cppzmq/v${_cppzmqver}/zmq_addon.hpp"
+        "001-mingw-__except-fixes.patch")
+sha256sums=('ebd7b5c830d6428956b67a0454a7f8cbed1de74b3b01e5c33c5378e22740f763'
+            '132c0e40e5a2f97e6946d2a3d0428e05c916c6d2c5702a59188f9788e09d2321'
+            'cb0e966111b73689c9fb908bef46ddaf327cba299c41f24d67f1a0151e11242d'
+            '054314f319d9b7d085975e01ddb7bcf39377ceef38b9796cd40d40cde6ce78ca')
+
+prepare() {
+  cd ${_realname}-${pkgver}
+  patch -Np1 -i "${srcdir}/001-mingw-__except-fixes.patch"
+}
 
 build() {
   [[ -d "${srcdir}"/build-${CARCH} ]] && rm -rf "${srcdir}"/build-${CARCH}
   mkdir -p ${srcdir}/build-${CARCH}
   cd ${srcdir}/build-${CARCH}
-  
+
   # CXXFLAGS+=" -DZMQ_HAVE_WINDOWS_TARGET_XP" - for next version
   ../${_realname}-${pkgver}/configure \
     --prefix=${MINGW_PREFIX} \
@@ -40,5 +50,10 @@ package() {
 
   cd "${srcdir}/build-${CARCH}"
   make DESTDIR="${pkgdir}" install
-  install -Dm644 "${srcdir}/zmq.hpp" "${pkgdir}${MINGW_PREFIX}/include/zmq.hpp"
+  install -Dm644 "${srcdir}/zmq-${_cppzmqver}.hpp" "${pkgdir}${MINGW_PREFIX}/include/zmq.hpp"
+  install -Dm644 "${srcdir}/zmq_addon-${_cppzmqver}.hpp" "${pkgdir}${MINGW_PREFIX}/include/zmq_addon.hpp"
+  
+  # Fix .pc file
+  local PREFIX_WIN=$(cygpath -m ${MINGW_PREFIX})
+  sed -e "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" -i "${pkgdir}${MINGW_PREFIX}/lib/pkgconfig/libzmq.pc"
 }

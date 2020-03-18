@@ -1,0 +1,88 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>.
+
+_realname=oslotest
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=4.0.0
+pkgrel=1
+pkgdesc="Oslo test framework (mingw-w64)"
+arch=('any')
+url='https://github.com/openstack/oslotest'
+license=('Apache')
+validpgpkeys=('gpg_KEY')
+depends=("${MINGW_PACKAGE_PREFIX}-python")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools"
+             "${MINGW_PACKAGE_PREFIX}-python-pbr"
+             "${MINGW_PACKAGE_PREFIX}-python-fixtures"
+             "${MINGW_PACKAGE_PREFIX}-python-subunit"
+             "${MINGW_PACKAGE_PREFIX}-python-stestr"
+             "${MINGW_PACKAGE_PREFIX}-python-testscenarios"
+             "${MINGW_PACKAGE_PREFIX}-python-testtools"
+             "${MINGW_PACKAGE_PREFIX}-python-mock"
+             "${MINGW_PACKAGE_PREFIX}-python-mox3"
+             # "${MINGW_PACKAGE_PREFIX}-python-os-client-config"
+             "${MINGW_PACKAGE_PREFIX}-python-debtcollector")
+install=${_realname}-${CARCH}.install
+options=('staticlibs' 'strip' '!debug')
+source=("${_realname}-${pkgver}.tar.gz"::"https://github.com/openstack/oslotest/archive/${pkgver}.tar.gz")
+sha512sums=('3c565a6a1a6ef9efa103f861852b978d93fdbd4babc03bd4556e4e4cafcf2bf5e310aa0edfd1182e16598ebe8be81147f7f8710f84cb4c43da8f56b389b25a33')
+
+
+# Helper macros to help make tasks easier #
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
+
+del_file_exists() {
+  for _fname in "$@"
+  do
+    if [ -f $_fname ]; then
+      rm -rf $_fname
+    fi
+  done
+}
+# =========================================== #
+
+prepare() {
+  cd "${srcdir}"
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+  export PBR_VERSION=${pkgver}
+}
+
+build() {
+  msg "Python build for ${CARCH}"  
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  msg "Python test for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  PYTHON=${MINGW_PREFIX}/bin/python ${MINGW_PREFIX}/bin/stestr run
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE"
+
+  local PREFIX_WIN=$(cygpath -wm ${MINGW_PREFIX})
+  # fix python command in files
+  sed -e "s|/usr/bin/env |${MINGW_PREFIX}|g" \
+      -e "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" \
+      -i "${pkgdir}${MINGW_PREFIX}/bin/oslo_run_pre_release_tests"
+}

@@ -1,45 +1,58 @@
 # Maintainer: Mario Emmenlauer <memmenlauer@biodataanalysis.de>
+# Contributor: Andrew Sun <adsun701@gmail.com>
 
 _realname=protobuf
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=3.4.0
+pkgver=3.11.4
+_gtest_ver=1.10.0
 pkgrel=1
 pkgdesc="Protocol Buffers - Google's data interchange format (mingw-w64)"
 arch=('any')
 url='https://developers.google.com/protocol-buffers/'
 license=('BSD')
-depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs" "${MINGW_PACKAGE_PREFIX}-zlib")
-makedepends=("${MINGW_PACKAGE_PREFIX}-gcc" "${MINGW_PACKAGE_PREFIX}-cmake" "automake" "autoconf" "libtool")
+depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs"
+         "${MINGW_PACKAGE_PREFIX}-zlib")
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
+             "${MINGW_PACKAGE_PREFIX}-cmake"
+             "automake" "autoconf" "libtool" "unzip")
 options=('staticlibs' 'strip')
 source=(${_realname}-${pkgver}.tar.gz::https://github.com/google/protobuf/archive/v${pkgver}.tar.gz
-        googletest-release-1.8.0.tar.gz::https://github.com/google/googletest/archive/release-1.8.0.tar.gz
-        0001-protobuf-3.1.0-gcc6.2.0-tests.patch)
-sha256sums=('cd55ee08e64a86cf12aaadd4672961813f592c194ed0c9ad94da0ec75acf219f'
-            '58a6f4277ca2bc8565222b3bbd58a177609e9c488e8a72649359ba51450db7d8'
-            '15c2248597356040be0111d5bfc7317d59a49552d5cd05b0fa70c76980b7ca66')
+        googletest-release-${_gtest_ver}.tar.gz::https://github.com/google/googletest/archive/release-${_gtest_ver}.tar.gz
+        0001-protobuf-3.1.0-gcc6.2.0-tests.patch
+        0002-windres-invocation.patch)
+noextract=("${_realname}-${pkgver}.tar.gz")
+sha256sums=('a79d19dcdf9139fa4b81206e318e33d245c4c9da1ffed21c87288ed4380426f9'
+            '9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb'
+            '15c2248597356040be0111d5bfc7317d59a49552d5cd05b0fa70c76980b7ca66'
+            '7c5434ca428784058d6a3bb4a14ff8ff2c4ee843c51800751bbee599d5a63288')
 
 prepare() {
+  tar -xzf "${srcdir}/${_realname}-${pkgver}.tar.gz"
   cd "${srcdir}/${_realname}-${pkgver}"
 
-  mv ../googletest-release-1.8.0/googlemock ./googlemock
-  mv ../googletest-release-1.8.0/googletest ./googletest
+  cp -r ../googletest-release-${_gtest_ver}/googlemock third_party/googletest/googlemock
+  cp -r ../googletest-release-${_gtest_ver}/googletest third_party/googletest/googletest
 
   patch -p1 -i ${srcdir}/0001-protobuf-3.1.0-gcc6.2.0-tests.patch
+  patch -p1 -i ${srcdir}/0002-windres-invocation.patch
+  ./autogen.sh
 }
 
 build() {
   [[ -d "${srcdir}/build-${MINGW_CHOST}" ]] && rm -rf "${srcdir}/build-${MINGW_CHOST}"
   cp -rf "${_realname}-${pkgver}" "build-${MINGW_CHOST}"
+  
+  # remove googlemock and googletest directories to allow both architectures to prepare correctly
+  rm -rf "${srcdir}/${_realname}-${pkgver}/googlemock"
+  rm -rf "${srcdir}/${_realname}-${pkgver}/googletest"
+  
   cd "${srcdir}/build-${MINGW_CHOST}"
-
-  CPPFLAGS+=" -D_WIN32_WINNT=0x0601"
 
   # autogen and configure are used to generate the pkg-config files
   # that will be manually installed. The cmake-based build does not
   # create pkg-config files. Remove autogen and configure if pkg-config
   # is not required:
-  ./autogen.sh
   ./configure \
       --prefix="${MINGW_PREFIX}" \
       --build="${MINGW_CHOST}" \
@@ -47,7 +60,7 @@ build() {
       --enable-shared
 
   MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
-  ${MINGW_PREFIX}/bin/cmake ./cmake \
+  ${MINGW_PREFIX}/bin/cmake \
       -Wno-dev \
       -G"MSYS Makefiles" \
       -DCMAKE_INSTALL_PREFIX="${MINGW_PREFIX}" \
@@ -55,15 +68,11 @@ build() {
       -DCMAKE_SKIP_RPATH="ON" \
       -Dprotobuf_MSVC_STATIC_RUNTIME="ON" \
       -DBUILD_SHARED_LIBS="ON" \
-      -Dprotobuf_BUILD_TESTS="ON" \
-      -Dprotobuf_WITH_ZLIB="ON"
+      -Dprotobuf_BUILD_TESTS="OFF" \
+      -Dprotobuf_WITH_ZLIB="ON" \
+      cmake
 
   make -j1
-}
-
-check() {
-  cd "${srcdir}/build-${MINGW_CHOST}"
-  make -j1 check
 }
 
 package() {

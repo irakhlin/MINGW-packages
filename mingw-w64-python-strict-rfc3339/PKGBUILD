@@ -1,0 +1,43 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=strict-rfc3339
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=0.7
+pkgrel=1
+pkgdesc="Strict, simple, lightweight RFC3339 functions (mingw-w64)"
+arch=('any')
+url='http://www.danielrichman.co.uk/libraries/strict-rfc3339.html'
+license=('GPL')
+depends=("${MINGW_PACKAGE_PREFIX}-python")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+options=('staticlibs' 'strip' '!debug')
+source=("https://pypi.io/packages/source/s/strict-rfc3339/strict-rfc3339-${pkgver}.tar.gz")
+sha512sums=('94a2992a9ea41b75527348f0f8dae1d118d57b0764122f874baa85f5e3b523beb219ed83c2d7224725e504cd3737a6bde485957135856dcde470f32675e44e77')
+
+prepare() {
+  cd "${srcdir}/${_realname}-${pkgver}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+  # Set version for python-pbr
+  export PBR_VERSION=${pkgver}
+}
+
+build() {
+  cd "${srcdir}/${_realname}-${pkgver}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+package() {
+  cd "${srcdir}/${_realname}-${pkgver}"
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE"
+}

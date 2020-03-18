@@ -1,24 +1,26 @@
 # Maintainer (MSYS2): Michael Hansen (zrax0111@gmail.com)
+# Contributor: Zach Bacon <zachbacon@vba-m.com>
 
 _variant=-${KF5_VARIANT:-shared}
 source "$(dirname ${BASH_SOURCE[0]})"/../mingw-w64-PKGBUILD-common/kde-frameworks5
 _kde_f5_init_package "${_variant}" "kdoctools"
-pkgver=5.38.0
+pkgver=5.68.0
 pkgrel=1
 arch=('any')
 pkgdesc="KF5 documentation framework using docbook (mingw-w64-qt5${_namesuff})"
 license=('LGPL')
-makedepends=("${MINGW_PACKAGE_PREFIX}-extra-cmake-modules>=${pkgver}" "perl")
+makedepends=("${MINGW_PACKAGE_PREFIX}-extra-cmake-modules>=${pkgver}"
+             "perl-URI")
 depends=()
-_kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-qt5${_namesuff}" "${MINGW_PACKAGE_PREFIX}-bzip2"
+_kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-qt5${_namesuff}"
 _kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-libxslt${_namesuff}"
 _kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-docbook-xsl${_namesuff}"
 _kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-ki18n-qt5${_namesuff}>=${pkgver}"
 _kde_f5_add_depends "${_variant}" "${MINGW_PACKAGE_PREFIX}-karchive-qt5${_namesuff}>=${pkgver}"
 groups=('kf5')
 source=("https://download.kde.org/stable/frameworks/${pkgver%.*}/${_basename}-${pkgver}.tar.xz"
-        'catalog_path.patch')
-sha256sums=('c95f7e604bd16c3ef97b3fc0320a5656ef1ea3b3c75b7d4d22348391423c7b39'
+        catalog_path.patch)
+sha256sums=('93f5bee9dfaacacacfbeb3e915b192b5e645c1d01057b0cea4081c9ae5285670'
             '7dafde4dd5a202c82b3e88480c0c80a045845f9bf35576e061a54a7fc2d31303')
 
 prepare() {
@@ -26,7 +28,8 @@ prepare() {
 
   # Passing CMAKE_INSTALL_PREFIX=/mingw64 causes meinproc to look in
   # C:/mingw64 for its catalog files, which is almost never correct
-  ( cd ${_basename}-${pkgver} && patch -p1 -i "${srcdir}/catalog_path.patch" )
+  cd ${_basename}-${pkgver}
+  patch -p1 -i "${srcdir}/catalog_path.patch"
 }
 
 build() {
@@ -47,7 +50,9 @@ build() {
       -DMSYS_REAL_INSTALL_DIR=${QT5_PREFIX} \
       -DCMAKE_INSTALL_DATAROOTDIR=share \
       -DKDE_INSTALL_LIBDIR=lib \
-      -DECM_MKSPECS_INSTALL_DIR=${QT5_PREFIX}/share/qt5/mkspecs \
+      -DECM_MKSPECS_INSTALL_DIR=${QT5_PREFIX}/share/qt5/mkspecs/modules \
+      -DPERL_EXECUTABLE=/usr/bin/perl \
+      -DBUILD_QCH=OFF \
       -DBUILD_TESTING=OFF \
       -DECM_DIR=${MINGW_PREFIX}/share/ECM \
       "${extra_config[@]}" \

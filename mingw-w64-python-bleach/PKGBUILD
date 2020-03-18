@@ -1,0 +1,36 @@
+# Maintainer: Peter Budai <peterbudai@hotmail.com>
+
+_realname=bleach
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=3.1.1
+pkgrel=1
+pkgdesc="An easy whitelist-based HTML-sanitizing tool (mingw-w64)"
+url="https://pypi.python.org/pypi/bleach"
+arch=('any')
+license=('Apache')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-html5lib")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+source=(${_realname}-${pkgver}.tar.gz::https://pypi.org/packages/source/b/${_realname}/${_realname}-${pkgver}.tar.gz)
+sha256sums=('aa8b870d0f46965bac2c073a93444636b0e1ca74e9777e34f03dd494b8a59d48')
+
+prepare() {
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+}
+
+build() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1 --skip-build
+}

@@ -4,9 +4,9 @@
 _realname=libuv
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=1.14.1
+pkgver=1.35.0
 pkgrel=1
-pkgdesc="Cross-platform asychronous I/O (mingw-w64)"
+pkgdesc="Cross-platform asynchronous I/O (mingw-w64)"
 arch=('any')
 url="https://github.com/libuv/libuv"
 license=("custom")
@@ -14,18 +14,16 @@ makedepends=("${MINGW_PACKAGE_PREFIX}-gcc")
 depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs")
 options=('staticlibs' 'strip')
 source=("${_realname}-${pkgver}.tar.gz"::"https://github.com/libuv/libuv/archive/v${pkgver}.tar.gz")
-sha256sums=('82fbbb0eaab4adcf8ed513d3b777c8e02ed2e77aae265baf6bd2d68cb84bc9e3')
+sha256sums=('ff84a26c79559e511f087aa67925c3b4e0f0aac60cd8039d4d38b292f208ff58')
 
 prepare() {
   cd "${srcdir}/${_realname}-${pkgver}"
-
  ./autogen.sh
 }
 
 build() {
   [[ -d ${srcdir}/build-${MINGW_CHOST} ]] && rm -rf ${srcdir}/build-${MINGW_CHOST}
-  mkdir -p "${srcdir}/build-${MINGW_CHOST}"
-  cd "${srcdir}/build-${MINGW_CHOST}"
+  mkdir -p "${srcdir}/build-${MINGW_CHOST}" && cd "${srcdir}/build-${MINGW_CHOST}"
   ../${_realname}-${pkgver}/configure \
     --prefix=${MINGW_PREFIX} \
     --build=${MINGW_CHOST} \
@@ -36,7 +34,7 @@ build() {
 
 check(){
   cd "${srcdir}/build-${MINGW_CHOST}"
-# One these tests fails
+  # One these tests fails
   make check || true
 }
 

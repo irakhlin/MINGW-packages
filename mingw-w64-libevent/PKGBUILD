@@ -4,27 +4,31 @@
 _realname=libevent
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=2.0.22
+pkgver=2.1.11
 pkgrel=2
-pkgdesc="An event notification library"
+pkgdesc="An event notification library (mingw-w64)"
 arch=('any')
-url="http://libevent.org"
+url="https://libevent.org"
 license=('BSD')
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
-             "${MINGW_PACKAGE_PREFIX}-openssl"
-             "${MINGW_PACKAGE_PREFIX}-python2")
-optdepends=("${MINGW_PACKAGE_PREFIX}-python2")
-source=(https://github.com/${_realname}/${_realname}/releases/download/release-${pkgver}-stable/${_realname}-${pkgver}-stable.tar.gz)
-sha256sums=('71c2c49f0adadacfdbe6332a372c38cf9c8b7895bb73dabeaa53cdcc1d4e1fa3')
+             "${MINGW_PACKAGE_PREFIX}-openssl")
+optdepends=("${MINGW_PACKAGE_PREFIX}-python3")
+source=(https://github.com/${_realname}/${_realname}/releases/download/release-${pkgver}-stable/${_realname}-${pkgver}-stable.tar.gz
+        'event2-02-win32.patch')
+sha256sums=('a65bac6202ea8c5609fd5c7e480e6d25de467ea1917c08290c521752f147283d'
+            'e572ed628daba12915aaa5867b35ef1b0ca3ed3eb6e9759f97136dd8eab32c08')
 
 prepare() {
   cd "${srcdir}/${_realname}-${pkgver}-stable"
+
+  # to make transmission work, taken from:
+  # https://github.com/transmission/libevent/commit/72e50166aaa2c3b3c35e336039df7101bd418264
+  patch -p1 -i ${srcdir}/event2-02-win32.patch
 }
 
 build() {
   [[ -d "${srcdir}/build-${MINGW_CHOST}" ]] && rm -rf "${srcdir}/build-${MINGW_CHOST}"
-  mkdir -p "${srcdir}/build-${MINGW_CHOST}"
-  cd "${srcdir}/build-${MINGW_CHOST}"
+  mkdir -p "${srcdir}/build-${MINGW_CHOST}" && cd "${srcdir}/build-${MINGW_CHOST}"
   ../${_realname}-${pkgver}-stable/configure \
     --prefix=${MINGW_PREFIX} \
     --build=${MINGW_CHOST} \
@@ -38,4 +42,6 @@ build() {
 package() {
   cd "${srcdir}/build-${MINGW_CHOST}"
   make DESTDIR="${pkgdir}" install
+
+  sed -s "s|$(cygpath -m ${MINGW_PREFIX})|${MINGW_PREFIX}|g" -i "${pkgdir}${MINGW_PREFIX}/lib/pkgconfig/${_realname}_openssl.pc"
 }

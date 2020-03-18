@@ -1,160 +1,72 @@
 # Maintainer: Alexey Pavlov <alexpux@gmail.com>
 # Contributor: Ray Donnelly <mingw.android@gmail.com>
 
-_pyname=sphinx
+_pyname=Sphinx
 _realname=sphinx
 pkgbase=mingw-w64-python-${_realname}
-pkgname=("${MINGW_PACKAGE_PREFIX}-python2-${_realname}" "${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
-pkgver=1.6.3
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=2.3.1
 pkgrel=1
 pkgdesc="Python documentation generator (mingw-w64)"
 arch=('any')
 license=('BSD')
-url="http://sphinx.pocoo.org/"
-makedepends=(
-            "${MINGW_PACKAGE_PREFIX}-python3-colorama"
-            "${MINGW_PACKAGE_PREFIX}-python3-docutils"
-            "${MINGW_PACKAGE_PREFIX}-python3-imagesize"
-            "${MINGW_PACKAGE_PREFIX}-python3-jinja"
-            "${MINGW_PACKAGE_PREFIX}-python3-pygments"
-            "${MINGW_PACKAGE_PREFIX}-python3-requests"
-            "${MINGW_PACKAGE_PREFIX}-python3-setuptools"
-            "${MINGW_PACKAGE_PREFIX}-python3-six"
-            "${MINGW_PACKAGE_PREFIX}-python2-colorama"
-            "${MINGW_PACKAGE_PREFIX}-python2-docutils"
-            "${MINGW_PACKAGE_PREFIX}-python2-imagesize"
-            "${MINGW_PACKAGE_PREFIX}-python2-jinja"
-            "${MINGW_PACKAGE_PREFIX}-python2-pygments"
-            "${MINGW_PACKAGE_PREFIX}-python2-requests"
-            "${MINGW_PACKAGE_PREFIX}-python2-setuptools"
-            "${MINGW_PACKAGE_PREFIX}-python2-six"
-            )
-checkdepends=(
-              "${MINGW_PACKAGE_PREFIX}-python3-nose"
-              "${MINGW_PACKAGE_PREFIX}-python2-nose"
-              "${MINGW_PACKAGE_PREFIX}-python3-snowballstemmer"
-              "${MINGW_PACKAGE_PREFIX}-python2-snowballstemmer"
-              "${MINGW_PACKAGE_PREFIX}-python3-babel"
-              "${MINGW_PACKAGE_PREFIX}-python2-babel"
-              "${MINGW_PACKAGE_PREFIX}-python3-sphinx-alabaster-theme"
-              "${MINGW_PACKAGE_PREFIX}-python2-sphinx-alabaster-theme"
-              "${MINGW_PACKAGE_PREFIX}-python3-sphinx_rtd_theme"
-              "${MINGW_PACKAGE_PREFIX}-python2-sphinx_rtd_theme"
-              "${MINGW_PACKAGE_PREFIX}-python2-mock"
-              "${MINGW_PACKAGE_PREFIX}-python3-mock"
-              #'texlive-latexextra'
-              )
-_dtoken="10/91/ceb2e0d763e0c626f7afd7e3272a5bb76dd06eed1f0b908270ea31984062"
-source=("https://pypi.python.org/packages/${_dtoken}/Sphinx-${pkgver}.tar.gz")
-sha256sums=('af8bdb8c714552b77d01d4536e3d6d2879d6cb9d25423d29163d5788e27046e6')
+url="https://www.sphinx-doc.org/"
+depends=("${MINGW_PACKAGE_PREFIX}-python-babel"
+         "${MINGW_PACKAGE_PREFIX}-python-colorama"
+         "${MINGW_PACKAGE_PREFIX}-python-docutils"
+         "${MINGW_PACKAGE_PREFIX}-python-imagesize"
+         "${MINGW_PACKAGE_PREFIX}-python-jinja"
+         "${MINGW_PACKAGE_PREFIX}-python-pygments"
+         "${MINGW_PACKAGE_PREFIX}-python-requests"
+         "${MINGW_PACKAGE_PREFIX}-python-setuptools"
+         "${MINGW_PACKAGE_PREFIX}-python-snowballstemmer"
+         "${MINGW_PACKAGE_PREFIX}-python-sphinx-alabaster-theme"
+         "${MINGW_PACKAGE_PREFIX}-python-sphinxcontrib-applehelp"
+         "${MINGW_PACKAGE_PREFIX}-python-sphinxcontrib-devhelp"
+         "${MINGW_PACKAGE_PREFIX}-python-sphinxcontrib-htmlhelp"
+         "${MINGW_PACKAGE_PREFIX}-python-sphinxcontrib-jsmath"
+         "${MINGW_PACKAGE_PREFIX}-python-sphinxcontrib-serializinghtml"
+         "${MINGW_PACKAGE_PREFIX}-python-sphinxcontrib-qthelp")
+optdepends=("${MINGW_PACKAGE_PREFIX}-imagemagick: ext.imageconverter")
+install=${_realname}3-${CARCH}.install
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-pytest")
+source=("${_pyname}-${pkgver}.tar.gz"::"https://pypi.org/packages/source/S/${_pyname}/${_pyname}-${pkgver}.tar.gz")
+sha256sums=('e6e766b74f85f37a5f3e0773a1e1be8db3fcb799deb58ca6d18b70b0b44542a5')
+noextract=(${_pyname}-${pkgver}.tar.gz)
 
 prepare() {
-  # souce duplication is required because makefile modify source code
-  # setyp.py --build tricks don't works well
-  cd ${srcdir}
-  for pver in {2,3}; do 
-    rm -rf python${pver}-build-${CARCH} | true
-    cp -r "${_pyname}-${pkgver}" "python${pver}-build-${CARCH}"
-  done
+  [[ -d ${srcdir}/${_pyname}-${pkgver} ]] && rm -rf ${srcdir}/${_pyname}-${pkgver}
+  tar -xzf ${srcdir}/${_pyname}-${pkgver}.tar.gz -C ${srcdir} || true
 
-  # change python2 interpreter
-  find python2-build-${CARCH} -type f -exec \
-  sed -i '1s,^#! \?/usr/bin/\(env \|\)python$,#!/usr/bin/python2,' {} \;
-  # change sphinx-binaries name in source code
-  find python2-build-${CARCH} -type f -name '*.py' -exec \
-  sed -ri 's,(sphinx-(:?build|apidoc|autogen|quickstart)),\12,' {} \;
-
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_pyname}-${pkgver}" "python-build-${CARCH}"
 }
 
 build() {
-  cd "${srcdir}"
-  for pver in {2,3}; do  
-    msg "Python ${pver} build for ${CARCH}"  
-    cd "${srcdir}/python${pver}-build-${CARCH}"
-    ${MINGW_PREFIX}/bin/python${pver} setup.py build
-  done  
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
 }
 
-package_python3-sphinx() {
-  pkgdesc='Python3 documentation generator'
-  depends=("${MINGW_PACKAGE_PREFIX}-python3-babel"
-           "${MINGW_PACKAGE_PREFIX}-python3-certifi"
-           "${MINGW_PACKAGE_PREFIX}-python3-chardet"
-           "${MINGW_PACKAGE_PREFIX}-python3-colorama"
-           "${MINGW_PACKAGE_PREFIX}-python3-docutils"
-           "${MINGW_PACKAGE_PREFIX}-python3-idna"
-           "${MINGW_PACKAGE_PREFIX}-python3-imagesize"
-           "${MINGW_PACKAGE_PREFIX}-python3-jinja"
-           "${MINGW_PACKAGE_PREFIX}-python3-pygments"
-           "${MINGW_PACKAGE_PREFIX}-python3-requests"
-           "${MINGW_PACKAGE_PREFIX}-python3-sphinx_rtd_theme"
-           "${MINGW_PACKAGE_PREFIX}-python3-snowballstemmer"
-           "${MINGW_PACKAGE_PREFIX}-python3-sphinx-alabaster-theme"
-           "${MINGW_PACKAGE_PREFIX}-python3-sphinxcontrib-websupport"
-           "${MINGW_PACKAGE_PREFIX}-python3-six"
-           "${MINGW_PACKAGE_PREFIX}-python3-urllib3"
-           "${MINGW_PACKAGE_PREFIX}-python3-whoosh")
-  #optdepends=("${MINGW_PACKAGE_PREFIX}-texlive-latexextra": for generation of PDF documentation')
+check() {
+  cd "${srcdir}/python-build-${CARCH}"
+  #2 failed, 1165 passed, 21 skipped, 3 xfailed, 30 xpassed, 3 warnings
+  ${MINGW_PREFIX}/bin/py.test || warning "test failed"
+}
 
-  local _mingw_prefix=$(cygpath -am ${MINGW_PREFIX})
-
-  cd "${srcdir}/python3-build-${CARCH}"
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python3 setup.py install --prefix=${MINGW_PREFIX} --root="${pkgdir}" -O1
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} --root="${pkgdir}" -O1 --skip-build
 
-  #rm -f ${pkgdir}${MINGW_PREFIX}/bin/sphinx{.exe,-script.py,.exe.manifest}
+  local PREFIX_WIN=$(cygpath -wm ${MINGW_PREFIX})
   # fix python command in files
   for _f in "${pkgdir}${MINGW_PREFIX}"/bin/*.py; do
-    sed -e "s|${_mingw_prefix}/bin/|/usr/bin/env |g" -i ${_f}
+    sed -e "s|/usr/bin/env |${MINGW_PREFIX}|g" \
+        -e "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" -i ${_f}
   done
-}
 
-package_python2-sphinx() {
-  pkgdesc='Python2 documentation generator'
-  depends=("${MINGW_PACKAGE_PREFIX}-python2-babel"
-           "${MINGW_PACKAGE_PREFIX}-python2-certifi"
-           "${MINGW_PACKAGE_PREFIX}-python2-colorama"
-           "${MINGW_PACKAGE_PREFIX}-python2-chardet"
-           "${MINGW_PACKAGE_PREFIX}-python2-docutils"
-           "${MINGW_PACKAGE_PREFIX}-python2-idna"
-           "${MINGW_PACKAGE_PREFIX}-python2-imagesize"
-           "${MINGW_PACKAGE_PREFIX}-python2-jinja"
-           "${MINGW_PACKAGE_PREFIX}-python2-pygments"
-           "${MINGW_PACKAGE_PREFIX}-python2-requests"
-           "${MINGW_PACKAGE_PREFIX}-python2-sphinx_rtd_theme"
-           "${MINGW_PACKAGE_PREFIX}-python2-snowballstemmer"
-           "${MINGW_PACKAGE_PREFIX}-python2-sphinx-alabaster-theme"
-           "${MINGW_PACKAGE_PREFIX}-python2-sphinxcontrib-websupport"
-           "${MINGW_PACKAGE_PREFIX}-python2-six"
-           "${MINGW_PACKAGE_PREFIX}-python2-urllib3"
-           "${MINGW_PACKAGE_PREFIX}-python2-whoosh"
-           "${MINGW_PACKAGE_PREFIX}-python2-typing")
-  #optdepends=("${MINGW_PACKAGE_PREFIX}-texlive-latexextra": for generation of PDF documentation')
-
-  local _mingw_prefix=$(cygpath -am ${MINGW_PREFIX})
-
-  cd "${srcdir}/python2-build-${CARCH}"
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python2 setup.py install --prefix=${MINGW_PREFIX} --root="${pkgdir}" -O1
-
-  # fix python command in files
-  for _f in "${pkgdir}${MINGW_PREFIX}"/bin/*.py; do
-    sed -e "s|${_mingw_prefix}/bin/|/usr/bin/env |g" -i ${_f}
-  done
-}
-
-package_mingw-w64-i686-python2-sphinx() {
-  package_python2-sphinx
-}
-
-package_mingw-w64-i686-python3-sphinx() {
-  package_python3-sphinx
-}
-
-package_mingw-w64-x86_64-python2-sphinx() {
-  package_python2-sphinx
-}
-
-package_mingw-w64-x86_64-python3-sphinx() {
-  package_python3-sphinx
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}"/share/licenses/python-${_realname}/LICENSE
 }

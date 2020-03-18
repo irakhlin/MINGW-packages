@@ -1,25 +1,27 @@
 # Maintainer: Alexey Pavlov <alexpux@gmail.com>
+# contributers: Zach Bacon <zachbacon@budgiemedia.rocks>
 
 _realname=SDL2
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=2.0.5
-pkgrel=2
+pkgver=2.0.12
+pkgrel=1
 pkgdesc="A library for portable low-level access to a video framebuffer, audio output, mouse, and keyboard (Version 2) (mingw-w64)"
 arch=('any')
 url="https://libsdl.org"
 license=("MIT")
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc" "${MINGW_PACKAGE_PREFIX}-pkg-config")
-depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs" "${MINGW_PACKAGE_PREFIX}-libiconv")
+depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs"
+         "${MINGW_PACKAGE_PREFIX}-libiconv"
+         "${MINGW_PACKAGE_PREFIX}-vulkan")
 options=('staticlibs' 'strip')
-source=("https://libsdl.org/release/SDL2-${pkgver}.tar.gz"
-        "gcc6.patch")
-sha256sums=('442038cf55965969f2ff06d976031813de643af9c9edc9e331bd761c242e8785'
-            '69a9bd1d073eeb633ecb70eeb3e48e2b2c79fbf016f60065a18e96e95134f580')
+source=("https://libsdl.org/release/SDL2-${pkgver}.tar.gz"{,.sig})
+sha256sums=('349268f695c02efbc9b9148a70b85e58cefbbf704abd3e91be654db7f1e2c863'
+            'SKIP')
+validpgpkeys=('1528635D8053A57F77D1E08630A59377A7763BE6') # Sam Lantinga
 
 prepare() {
   cd "${srcdir}"/${_realname}-${pkgver}
-  patch -p1 -i ${srcdir}/gcc6.patch
 }
 
 build() {
@@ -28,7 +30,8 @@ build() {
   ../${_realname}-${pkgver}/configure \
     --prefix=${MINGW_PREFIX} \
     --build=${MINGW_CHOST} \
-    --host=${MINGW_CHOST}
+    --host=${MINGW_CHOST} \
+    --enable-video-vulkan
 
   make
 }

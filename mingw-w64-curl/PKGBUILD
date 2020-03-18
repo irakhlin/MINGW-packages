@@ -1,4 +1,5 @@
 # Maintainer: Alexey Pavlov <alexpux@gmail.com>
+
 _variant=-openssl
 #_variant=-winssl
 #_variant=-gnutls
@@ -12,25 +13,27 @@ fi
 _realname=curl
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}${_namesuff}"
-pkgver=7.55.1
-pkgrel=2
+pkgver=7.69.1
+pkgrel=1
 pkgdesc="Command line tool and library for transferring data with URLs. (mingw-w64)"
 arch=('any')
-url="https://curl.haxx.se"
+url="https://curl.haxx.se/"
 license=("MIT")
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc" "${MINGW_PACKAGE_PREFIX}-pkg-config")
 depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs"
          "${MINGW_PACKAGE_PREFIX}-c-ares"
+         "${MINGW_PACKAGE_PREFIX}-brotli"
          "${MINGW_PACKAGE_PREFIX}-libidn2"
          "${MINGW_PACKAGE_PREFIX}-libmetalink"
+         "${MINGW_PACKAGE_PREFIX}-libpsl"
          "${MINGW_PACKAGE_PREFIX}-libssh2"
          "${MINGW_PACKAGE_PREFIX}-zlib"
-         "${MINGW_PACKAGE_PREFIX}-rtmpdump"
          $([[ "$_variant" == "-openssl" ]] && echo \
             "${MINGW_PACKAGE_PREFIX}-ca-certificates" \
             "${MINGW_PACKAGE_PREFIX}-openssl" \
             "${MINGW_PACKAGE_PREFIX}-nghttp2")
          $([[ "$_variant" == "-gnutls" ]] && echo \
+            "${MINGW_PACKAGE_PREFIX}-rtmpdump" \
             "${MINGW_PACKAGE_PREFIX}-ca-certificates" \
             "${MINGW_PACKAGE_PREFIX}-gnutls")
          )
@@ -41,20 +44,23 @@ fi
 options=('staticlibs')
 source=("${url}/download/${_realname}-${pkgver}.tar.bz2"{,.asc}
         "0001-Make-cURL-relocatable.patch"
-        "0002-cURL-Get-relocatable-base-from-.dll-instead-of-.exe.patch")
-sha256sums=('e5b1a92ed3b0c11f149886458fa063419500819f1610c020d62f25b8e4b16cfb'
+        "0002-nghttp2-static.patch"
+        "0003-libpsl-static-libs.patch")
+sha256sums=('2ff5e5bd507adf6aa88ff4bbafd4c7af464867ffb688be93b9930717a56c4de8'
             'SKIP'
-            '577e900086f91adb332f5ddb95adce980c530445d22aa0fbf4b43b25c2efe80e'
-            '604b34b5ca9b3520a83a23959f943e330c1ef36b50ee377f8210b59be3e5f62b')
+            '1d591a915bf4b1edeb27039edd01784503e73a41826703669b0d6ad5e9f328de'
+            '79eec8a337e375d5102fef884030ceacd163a79e5c495e9a974a6b9a11b60c61'
+            '7492d019036b5bec251bfbc3c0b40e5f16d3dd6b2515068835e087a6c21f19ad')
 validpgpkeys=('914C533DF9B2ADA2204F586D78E11C6B279D5C91'  # Daniel Stenberg
               '27EDEAF22F3ABCEB50DB9A125CC908FDB71E12C2'
               '4461EAF0F8E9097F48AF0555F9FEAFF9D34A1BDB')
 
 prepare() {
-  cd "${_realname}-${pkgver}"
+  cd "${srcdir}/${_realname}-${pkgver}"
   rm -f lib/pathtools.h lib/pathtools.c > /dev/null 2>&1 || true
   patch -p1 -i "${srcdir}/0001-Make-cURL-relocatable.patch"
-  patch -p1 -i "${srcdir}/0002-cURL-Get-relocatable-base-from-.dll-instead-of-.exe.patch"
+  patch -p1 -i "${srcdir}/0002-nghttp2-static.patch"
+  patch -p1 -i "${srcdir}/0003-libpsl-static-libs.patch"
   autoreconf -vfi
 }
 
@@ -73,17 +79,24 @@ build() {
     _variant_config+=("--with-winssl")
     _variant_config+=('--without-nghttp2')
     _variant_config+=("--without-ca-bundle")
-    _variant_config+=("--without-ca-path")  
+    _variant_config+=("--without-ca-path")
+    _variant_config+=("--without-librtmp")
   elif [ "${_variant}" = "-gnutls" ]; then
+    _variant_config+=("--with-default-ssl-backend=gnutls")
     _variant_config+=("--without-ssl")
     _variant_config+=("--with-gnutls")
+    _variant_config+=("--with-winssl")
     _variant_config+=('--without-nghttp2')
     _variant_config+=("--with-ca-bundle=${MINGW_PREFIX}/ssl/certs/ca-bundle.crt")
+    _variant_config+=("--with-librtmp")
   elif [ "${_variant}" = "-openssl" ]; then
+    _variant_config+=("--with-default-ssl-backend=openssl")
     _variant_config+=("--without-gnutls")
     _variant_config+=("--with-ssl")
+    _variant_config+=("--with-winssl")
     _variant_config+=("--with-ca-bundle=${MINGW_PREFIX}/ssl/certs/ca-bundle.crt")
-    _variant_config+=('--with-nghttp2=${MINGW_PREFIX}/')
+    _variant_config+=("--with-nghttp2=${MINGW_PREFIX}/")
+    _variant_config+=("--without-librtmp")
   fi
   cd "${srcdir}/build-${CARCH}"
   ../${_realname}-${pkgver}/configure \
@@ -95,7 +108,12 @@ build() {
     --enable-static \
     --enable-shared \
     --enable-sspi \
+    --enable-ldap \
+    --enable-ldaps \
+    --with-brotli \
+    --with-ldap-lib=wldap32 \
     --with-libmetalink=${MINGW_PREFIX} \
+    --with-libssh2 \
     "${_variant_config[@]}" \
     "${extra_config[@]}"
 # there's a bug with zsh completion generation script and Windows.

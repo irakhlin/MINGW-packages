@@ -3,26 +3,26 @@
 _realname=gst-libav
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=1.12.3
+pkgver=1.16.2
 pkgrel=1
 pkgdesc="GStreamer libav (mingw-w64)"
 arch=('any')
 url="https://gstreamer.freedesktop.org/"
 license=("LGPL")
-makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
-             "${MINGW_PACKAGE_PREFIX}-pkg-config"
-             "${MINGW_PACKAGE_PREFIX}-python2"
-             "yasm")
-depends=("${MINGW_PACKAGE_PREFIX}-bzip2"
-         "${MINGW_PACKAGE_PREFIX}-gst-plugins-base")
+makedepends=("${MINGW_PACKAGE_PREFIX}-gobject-introspection"
+             "${MINGW_PACKAGE_PREFIX}-gtk-doc"
+             "${MINGW_PACKAGE_PREFIX}-nasm"
+             "${MINGW_PACKAGE_PREFIX}-meson"
+             "${MINGW_PACKAGE_PREFIX}-ninja")
+depends=("${MINGW_PACKAGE_PREFIX}-gst-plugins-base"
+         "${MINGW_PACKAGE_PREFIX}-ffmpeg")
 options=(!libtool strip staticlibs)
 source=(${url}/src/${_realname}/${_realname}-${pkgver}.tar.xz)
-sha256sums=('015ef8cab6f7fb87c8fb42642486423eff3b6e6a6bccdcd6a189f436a3619650')
+sha256sums=('c724f612700c15a933c7356fbeabb0bb9571fb5538f8b1b54d4d2d94188deef2')
 
 prepare() {
   cd ${srcdir}/${_realname}-${pkgver}
 
-  NOCONFIGURE=1 ./autogen.sh
 }
 
 build() {
@@ -30,21 +30,20 @@ build() {
   mkdir -p "${srcdir}/build-${MINGW_CHOST}"
   cd "${srcdir}/build-${MINGW_CHOST}"
 
-  MSYSTEM=mingw32 \
-  ../${_realname}-${pkgver}/configure \
-    --prefix=${MINGW_PREFIX} \
-    --build=${MINGW_CHOST} \
-    --host=${MINGW_CHOST} \
-    --disable-static \
-    --enable-shared \
-    --enable-silent-rules \
-    --disable-gtk-doc
-  make
+  ${MINGW_PREFIX}/bin/meson \
+    --buildtype plain \
+    --wrap-mode=nofallback \
+    -Dauto_features=enabled \
+    -Dpackage-origin='https://www.msys2.org' \
+    ../${_realname}-${pkgver}
+
+  ninja
 }
 
 package() {
   cd "${srcdir}/build-${MINGW_CHOST}"
-  make -j1 DESTDIR="${pkgdir}" install
+
+  DESTDIR="${pkgdir}${MINGW_PREFIX}" ninja install
 
   rm -f ${pkgdir}${MINGW_PREFIX}/lib/gstreamer*/*.a
 }

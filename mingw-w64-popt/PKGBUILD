@@ -1,5 +1,6 @@
 # Maintainer: Alexey Pavlov <alexpux@gmail.com>
 # include patches from Archlinux AUR mingw-w64 stuff
+
 _realname=popt
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
@@ -13,7 +14,7 @@ makedepends=("${MINGW_PACKAGE_PREFIX}-gcc" "${MINGW_PACKAGE_PREFIX}-pkg-config")
 depends=("${MINGW_PACKAGE_PREFIX}-gettext")
 options=('staticlibs' 'strip')
 source=(#"http://rpm5.org/files/popt/popt-${pkgver}.tar.gz"
-        ftp://anduin.linuxfromscratch.org/BLFS/popt/popt-${pkgver}.tar.gz
+        https://web.archive.org/web/20170922140539/rpm5.org/files/popt/popt-${pkgver}.tar.gz
         "0001-nl_langinfo.mingw32.patch"
         "197416.all.patch"
         "217602.all.patch"
@@ -66,6 +67,6 @@ build() {
 package() {
   cd "${srcdir}/build-${MINGW_CHOST}"
   make DESTDIR="${pkgdir}" install
-  install -D -m644 "${srcdir}/${_realname}-${pkgver}/COPYING" "$pkgdir${MINGW_PREFIX}/share/licenses/$pkgname/LICENSE"
+  install -D -m644 "${srcdir}/${_realname}-${pkgver}/COPYING" "$pkgdir${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
   find "${pkgdir}${MINGW_PREFIX}" -name '*.def' -o -name '*.exp' | xargs -rtl1 rm
 }

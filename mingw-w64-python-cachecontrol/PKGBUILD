@@ -1,0 +1,86 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=cachecontrol
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=0.12.6
+pkgrel=1
+pkgdesc="httplib2 caching for requests (mingw-w64)"
+arch=('any')
+url="https://github.com/ionrock/${_realname}"
+license=('Apache')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-msgpack"
+         "${MINGW_PACKAGE_PREFIX}-python-requests")
+optdepends=("${MINGW_PACKAGE_PREFIX}-python-lockfile: for the FileCache")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+#checkdepends=("${MINGW_PACKAGE_PREFIX}-python-mock"
+#              "${MINGW_PACKAGE_PREFIX}-python-pytest"
+#              "${MINGW_PACKAGE_PREFIX}-python-lockfile"
+#              "${MINGW_PACKAGE_PREFIX}-python-cherrypy")
+install=${_realname}3-${CARCH}.install
+options=('staticlibs' 'strip' '!debug')
+source=("${_realname}-${pkgver}.tar.gz"::"${url}/archive/v${pkgver}.tar.gz")
+sha256sums=('2ec120838f445bff473cd8b8206ddae3650679142976927179743fabb876f3e3')
+
+# Helper macros to help make tasks easier #
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
+
+del_file_exists() {
+  for _fname in "$@"
+  do
+    if [ -f $_fname ]; then
+      rm -rf $_fname
+    fi
+  done
+}
+# =========================================== #
+
+prepare() {
+  cd "${srcdir}"
+  pushd "${_realname}-${pkgver}"
+#    apply_patch_with_msg 0001-A-really-important-fix.patch \
+#      0002-A-less-important-fix.patch
+  popd
+
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+}
+
+build() {
+  msg "Python build for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  msg "Python test for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  # ${MINGW_PREFIX}/bin/python -m pytest
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  local PREFIX_WIN=$(cygpath -wm ${MINGW_PREFIX})
+  # fix python command in files
+  for _f in "${pkgdir}${MINGW_PREFIX}"/bin/*.py; do
+    sed -e "s|/usr/bin/env |${MINGW_PREFIX}|g" \
+        -e "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" -i ${_f}
+  done
+}

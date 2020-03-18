@@ -1,0 +1,11 @@
+--- Botan-2.13.0/src/lib/utils/socket/info.txt.orig	2020-01-12 18:08:42.988545200 +0200
++++ Botan-2.13.0/src/lib/utils/socket/info.txt	2020-01-12 18:08:51.925072800 +0200
+@@ -10,7 +10,7 @@
+ 
+ <libs>
+ linux -> rt
+-mingw -> ws2_32
++mingw -> ws2_32,mswsock
+ windows -> ws2_32
+ haiku -> network
+ solaris -> socket,nsl

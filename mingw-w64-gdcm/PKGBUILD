@@ -3,17 +3,19 @@
 _realname=gdcm
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=2.6.8
-pkgrel=1
+pkgver=3.0.5
+pkgrel=2
 pkgdesc="The Grassroots DICOM library (mingw-w64)"
 arch=('any')
 url="https://gdcm.sourceforge.io/wiki/index.php"
 license=("BSD")
-depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs"
+depends=("${MINGW_PACKAGE_PREFIX}-expat"
+         "${MINGW_PACKAGE_PREFIX}-gcc-libs"
          "${MINGW_PACKAGE_PREFIX}-lcms2"
          "${MINGW_PACKAGE_PREFIX}-libxml2"
-         "${MINGW_PACKAGE_PREFIX}-expat"
+         "${MINGW_PACKAGE_PREFIX}-libxslt"
          "${MINGW_PACKAGE_PREFIX}-json-c"
+         #"${MINGW_PACKAGE_PREFIX}-openjpeg2"
          "${MINGW_PACKAGE_PREFIX}-openssl"
          "${MINGW_PACKAGE_PREFIX}-poppler"
          "${MINGW_PACKAGE_PREFIX}-zlib")
@@ -21,18 +23,27 @@ makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
              "${MINGW_PACKAGE_PREFIX}-pkg-config"
              "${MINGW_PACKAGE_PREFIX}-cmake")
 options=('staticlibs' 'strip')
-source=("https://downloads.sourceforge.net/project/gdcm/gdcm%202.x/GDCM%20${pkgver}/gdcm-${pkgver}.tar.bz2")
-sha256sums=('c9b0773313d57871a81277cd3c2fd00f4dd58f9482e165797808c07345fd2a54')
+source=(#"https://downloads.sourceforge.net/project/gdcm/gdcm%202.x/GDCM%20${pkgver}/gdcm-${pkgver}.tar.bz2"
+        gdcm-${pkgver}.tar.gz::https://github.com/malaterre/GDCM/archive/v${pkgver}.tar.gz
+        0002-cmake-config-destination.patch
+        0004-fix-find-openssl.patch
+        0005-fix-cross-initializing.patch)
+sha256sums=('5cc175d9b845db91143f972e505680e766ab814a147b16abbb34acd88dacdb5a'
+            '70b1f693e381f4d8e725db7a71df79f2803809cc7b0ac90ea41b1f3c6238c945'
+            '77645101ea8425c601fb0717630b334c8a4ced3ea7f3625c11d338c56529e5fb'
+            '018b083e74091776afaef9894fcb1c7554b36828f162bc4c9b2ea2a6b154b159')
 
 prepare() {
   cd "${srcdir}/${_realname}-${pkgver}"
+  patch -p1 -i ${srcdir}/0002-cmake-config-destination.patch
+  patch -p1 -i ${srcdir}/0004-fix-find-openssl.patch
+  patch -p1 -i ${srcdir}/0005-fix-cross-initializing.patch
 }
 
 build() {
   msg "Build static version"
   [[ -d "${srcdir}/build-static-${MINGW_CHOST}" ]] && rm -rf "${srcdir}/build-static-${MINGW_CHOST}"
-  mkdir "${srcdir}/build-static-${MINGW_CHOST}"
-  cd "${srcdir}/build-static-${MINGW_CHOST}"
+  mkdir -p "${srcdir}/build-static-${MINGW_CHOST}" && cd "${srcdir}/build-static-${MINGW_CHOST}"
 
   MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
   ${MINGW_PREFIX}/bin/cmake \
@@ -53,7 +64,6 @@ build() {
     -DGDCM_USE_SYSTEM_CHARLS=OFF \
     -DGDCM_USE_SYSTEM_POPPLER=ON \
     -DGDCM_USE_SYSTEM_LIBXML2=ON \
-    -DGDCM_USE_OPENJPEG_V2=OFF \
     -DGDCM_BUILD_EXAMPLES=OFF \
     -DGDCM_BUILD_TESTING=ON \
     -DGDCM_WRAP_PYTHON=OFF \
@@ -63,19 +73,15 @@ build() {
     -DGDCM_WRAP_CSHARP=OFF \
     -DGDCM_USE_JPEGLS=ON \
     -DGDCM_DOCUMENTATION=OFF \
-    -DGDCM_PDF_DOCUMENTATION=OFF \
     -DGDCM_USE_VTK=OFF \
-    -DGDCM_USE_ACTIVIZ=OFF \
     -DGDCM_USE_PARAVIEW=OFF \
-    -DGDCM_USE_WXWIDGETS=OFF \
     -DGDCM_BUILD_APPLICATIONS=OFF \
     ../${_realname}-${pkgver}
   make
 
   msg "Build shared version"
   [[ -d "${srcdir}/build-shared-${MINGW_CHOST}" ]] && rm -rf "${srcdir}/build-shared-${MINGW_CHOST}"
-  mkdir "${srcdir}/build-shared-${MINGW_CHOST}"
-  cd "${srcdir}/build-shared-${MINGW_CHOST}"
+  mkdir -p "${srcdir}/build-shared-${MINGW_CHOST}" && cd "${srcdir}/build-shared-${MINGW_CHOST}"
 
   MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
   ${MINGW_PREFIX}/bin/cmake \
@@ -96,7 +102,6 @@ build() {
     -DGDCM_USE_SYSTEM_CHARLS=OFF \
     -DGDCM_USE_SYSTEM_POPPLER=ON \
     -DGDCM_USE_SYSTEM_LIBXML2=ON \
-    -DGDCM_USE_OPENJPEG_V2=OFF \
     -DGDCM_BUILD_EXAMPLES=OFF \
     -DGDCM_BUILD_TESTING=ON \
     -DGDCM_WRAP_PYTHON=OFF \
@@ -106,11 +111,8 @@ build() {
     -DGDCM_WRAP_CSHARP=OFF \
     -DGDCM_USE_JPEGLS=ON \
     -DGDCM_DOCUMENTATION=OFF \
-    -DGDCM_PDF_DOCUMENTATION=OFF \
     -DGDCM_USE_VTK=OFF \
-    -DGDCM_USE_ACTIVIZ=OFF \
     -DGDCM_USE_PARAVIEW=OFF \
-    -DGDCM_USE_WXWIDGETS=OFF \
     -DGDCM_BUILD_APPLICATIONS=OFF \
     ../${_realname}-${pkgver}
   make

@@ -3,38 +3,56 @@
 
 _realname=lxml
 pkgbase=mingw-w64-python-${_realname}
-pkgname=("${MINGW_PACKAGE_PREFIX}-python2-${_realname}" 
-         "${MINGW_PACKAGE_PREFIX}-python3-${_realname}"
-         "${MINGW_PACKAGE_PREFIX}-python-${_realname}-docs")
-pkgver=3.8.0
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+pkgver=4.5.0
 pkgrel=1
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}=${pkgver}"
+          "${MINGW_PACKAGE_PREFIX}-python-${_realname}-docs")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}"
+           "${MINGW_PACKAGE_PREFIX}-python-${_realname}-docs")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}"
+          "${MINGW_PACKAGE_PREFIX}-python-${_realname}-docs")
+pkgdesc="Python binding for the libxml2 and libxslt libraries (mingw-w64)"
 arch=('any')
 license=('BSD' 'custom')
-url="http://lxml.de/"
-makedepends=("${MINGW_PACKAGE_PREFIX}-python2"
-             "${MINGW_PACKAGE_PREFIX}-python3"
-             "${MINGW_PACKAGE_PREFIX}-libxslt"
-             "${MINGW_PACKAGE_PREFIX}-python2-cssselect"
-             "${MINGW_PACKAGE_PREFIX}-python3-cssselect")
-_dtoken="39/e8/a8e0b1fa65dd021d48fe21464f71783655f39a41f218293c1c590d54eb82"
-source=(https://pypi.io/packages/source/l/lxml/${_realname}-${pkgver}.tar.gz{,.asc}
-        mingw-python-fix.patch
-        use-distutils-get_platform.patch)
-sha256sums=('736f72be15caad8116891eb6aa4a078b590d231fdc63818c40c21624ac71db96'
-            'SKIP'
+url="https://lxml.de/"
+depends=("${MINGW_PACKAGE_PREFIX}-libxml2"
+         "${MINGW_PACKAGE_PREFIX}-libxslt"
+         "${MINGW_PACKAGE_PREFIX}-python")
+optdepends=("${MINGW_PACKAGE_PREFIX}-python-beautifulsoup4: support for parsing not well formed HTML"
+            "${MINGW_PACKAGE_PREFIX}-python-cssselect: support for cssselect"
+            "${MINGW_PACKAGE_PREFIX}-python-html5lib: support for html5lib parser")
+makedepends=("${MINGW_PACKAGE_PREFIX}-cython"
+             "${MINGW_PACKAGE_PREFIX}-python-docutils"
+             "${MINGW_PACKAGE_PREFIX}-python-beautifulsoup4"
+             "${MINGW_PACKAGE_PREFIX}-python-cssselect"
+             "${MINGW_PACKAGE_PREFIX}-python-html5lib")
+source=("https://github.com/lxml/lxml/archive/${_realname}-${pkgver}.tar.gz"
+        "mingw-python-fix.patch"
+        "use-distutils-get_platform.patch"
+        "allow-pass-path-to-rst2s5.patch")
+sha256sums=('6d7b8f562e1d8f60e5919589bad39c9b3e1b2b5563d2b221fdabbcb84f13052d'
             'd5811e7c0be65d7e9ce59ad925466ac7dc95bdca05439be0becf2cca7bb9602a'
-            'd50fefc47295d8c6eecf1ca42d03af43dc79d3debb52caf8edbed3b56df2f672')
-validpgpkeys=('1737D5FB8DACC53CA96A77AB0D3D536908D3A01E')
+            'd50fefc47295d8c6eecf1ca42d03af43dc79d3debb52caf8edbed3b56df2f672'
+            'ec4de74d02cc4f0d09c029c7e36063ff833e378b36993e8bb57b852ac5648b7c')
+
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
 
 prepare() {
-  cd "${srcdir}/${_realname}-${pkgver}"
-  patch -p1 -i ${srcdir}/mingw-python-fix.patch
-  patch -p1 -i ${srcdir}/use-distutils-get_platform.patch
+  cd "${srcdir}/${_realname}-${_realname}-${pkgver}"
+  apply_patch_with_msg mingw-python-fix.patch \
+              use-distutils-get_platform.patch \
+              allow-pass-path-to-rst2s5.patch
 
   cd "${srcdir}"
-
-  cp -r ${_realname}-${pkgver} build-python2-${CARCH}
-  cp -r ${_realname}-${pkgver} build-python3-${CARCH}
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${_realname}-${pkgver}" "python-build-${CARCH}"
 }
 
 build() {
@@ -56,79 +74,32 @@ build() {
   CPPFLAGS="$CPPFLAGS -I${PREFIX_WIN}\\\\include\\\\libxml2"
   LDFLAGS="$LDFLAGS -L${PREFIX_WIN}\\\\lib"
 
-  # Build python 2 module
-  cd "${srcdir}"/build-python2-${CARCH}
-  ${MINGW_PREFIX}/bin/python2 setup.py build --with-xslt-config=${MINGW_PREFIX}/bin/xslt-config
+  msg "Python build for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build \
+       --with-xslt-config=${MINGW_PREFIX}/bin/xslt-config \
+       --with-xml2-config=${MINGW_PREFIX}/bin/xml2-config \
+       --with-cython --with-unicode-strings
 
-  # Build python 3 module
-  cd "${srcdir}"/build-python3-${CARCH}
-  ${MINGW_PREFIX}/bin/python3 setup.py build --with-xslt-config=${MINGW_PREFIX}/bin/xslt-config
+  #make PYTHON=${MINGW_PREFIX}/bin/python RST2S5=${MINGW_PREFIX}/bin/rst2s5.py html
 }
 
-package_python2-lxml() {
-  pkgdesc="Python2 binding for the libxml2 and libxslt libraries"
-  depends=("${MINGW_PACKAGE_PREFIX}-python2" "${MINGW_PACKAGE_PREFIX}-libxslt")
-  optdepends=("${MINGW_PACKAGE_PREFIX}-python2-beautifulsoup3: support for parsing not well formed HTML"
-      "${MINGW_PACKAGE_PREFIX}-python-lxml-docs: offline docs")
-
-  cd "${srcdir}/build-python2-${CARCH}"
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-    ${MINGW_PREFIX}/bin/python2 setup.py install --prefix=${MINGW_PREFIX#\/} --root="${pkgdir}" --optimize=1 --skip-build
+    ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX#\/} \
+        --root="${pkgdir}" --optimize=1 --skip-build \
+        --with-xslt-config=${MINGW_PREFIX}/bin/xslt-config \
+        --with-xml2-config=${MINGW_PREFIX}/bin/xml2-config \
+        --with-cython --with-unicode-strings
 
   install -Dm644 LICENSES.txt \
-    "${pkgdir}${MINGW_PREFIX}"/share/licenses/python2-${_realname}/LICENSE
+    "${pkgdir}${MINGW_PREFIX}"/share/licenses/python-${_realname}/LICENSE
   install -Dm644 doc/licenses/BSD.txt \
-    "${pkgdir}${MINGW_PREFIX}"/share/licenses/python2-${_realname}/BSD.txt
+    "${pkgdir}${MINGW_PREFIX}"/share/licenses/python-${_realname}/BSD.txt
   install -Dm644 doc/licenses/elementtree.txt \
-    "${pkgdir}${MINGW_PREFIX}"/share/licenses/python2-${_realname}/elementtree.txt
-}
+    "${pkgdir}${MINGW_PREFIX}"/share/licenses/python-${_realname}/elementtree.txt
 
-package_python3-lxml() {
-  pkgdesc="Python3 binding for the libxml2 and libxslt libraries"
-  depends=("${MINGW_PACKAGE_PREFIX}-python3" "${MINGW_PACKAGE_PREFIX}-libxslt")
-  optdepends=("${MINGW_PACKAGE_PREFIX}-python-lxml-docs: offline docs")
-
-  cd "${srcdir}/build-python3-${CARCH}"
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-    ${MINGW_PREFIX}/bin/python3 setup.py install --prefix=${MINGW_PREFIX#\/} --root="${pkgdir}" --optimize=1 --skip-build
-
-  install -Dm644 LICENSES.txt \
-    "${pkgdir}${MINGW_PREFIX}"/share/licenses/python3-${_realname}/LICENSE
-  install -Dm644 doc/licenses/BSD.txt \
-    "${pkgdir}${MINGW_PREFIX}"/share/licenses/python3-${_realname}/BSD.txt
-  install -Dm644 doc/licenses/elementtree.txt \
-    "${pkgdir}${MINGW_PREFIX}"/share/licenses/python3-${_realname}/elementtree.txt
-}
-
-package_python-lxml-docs() {
-  pkgdesc="Python binding for the libxml2 and libxslt libraries (docs)"
-  options=('docs')
-
-  cd ${_realname}-$pkgver
-  install -d "${pkgdir}${MINGW_PREFIX}"/share/doc/${_realname}
-  cp -r doc/html "${pkgdir}${MINGW_PREFIX}"/share/doc/${_realname}
-}
-
-package_mingw-w64-i686-python2-lxml() {
-  package_python2-lxml
-}
-
-package_mingw-w64-i686-python3-lxml() {
-  package_python3-lxml
-}
-
-package_mingw-w64-x86_64-python2-lxml() {
-  package_python2-lxml
-}
-
-package_mingw-w64-x86_64-python3-lxml() {
-  package_python3-lxml
-}
-
-package_mingw-w64-i686-python-lxml-docs() {
-  package_python-lxml-docs
-}
-
-package_mingw-w64-x86_64-python-lxml-docs() {
-  package_python-lxml-docs
+  #install -d "${pkgdir}${MINGW_PREFIX}"/share/doc/${_realname}
+  #cp -r doc/html "${pkgdir}${MINGW_PREFIX}"/share/doc/${_realname}
 }

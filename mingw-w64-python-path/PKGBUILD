@@ -2,81 +2,46 @@
 
 _realname=path.py
 pkgbase=mingw-w64-python-path
-pkgname=("${MINGW_PACKAGE_PREFIX}-python3-path"
-         "${MINGW_PACKAGE_PREFIX}-python2-path")
-pkgver=10.3.1
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-path")
+pkgver=13.2.0
 pkgrel=1
+provides=("${MINGW_PACKAGE_PREFIX}-python3-path=${pkgver}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-path")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-path")
 pkgdesc="File system based database that uses python pickles (mingw-w64)"
-url="https://github.com/jaraco/path.py"
+url="https://pypi.org/project/path.py/"
 arch=('any')
 license=('MIT')
-makedepends=("${MINGW_PACKAGE_PREFIX}-python3-setuptools"
-             "${MINGW_PACKAGE_PREFIX}-python2-setuptools"
-             "${MINGW_PACKAGE_PREFIX}-python3-colorama"
-             "${MINGW_PACKAGE_PREFIX}-python2-colorama")
-checkdepends=("${MINGW_PACKAGE_PREFIX}-python3-pytest"
-              "${MINGW_PACKAGE_PREFIX}-python2-pytest"
-              "${MINGW_PACKAGE_PREFIX}-python3-py"
-              "${MINGW_PACKAGE_PREFIX}-python2-py")
-source=("https://files.pythonhosted.org/packages/source/p/path.py/${_realname}-${pkgver}.tar.gz")
-sha256sums=('6a443147d40079534f25d962c0b3b3a2f90b18b83b2e2987cbbbe218b6b6cdea')
-
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-importlib-metadata")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools"
+             "${MINGW_PACKAGE_PREFIX}-python-setuptools-scm")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-pytest-runner"
+              "${MINGW_PACKAGE_PREFIX}-python-pytest-flake8")
+source=("${_realname}-${pkgver}.tar.gz"::"https://github.com/jaraco/path.py/archive/v${pkgver}.tar.gz")
+sha512sums=('59c9df45996eb227df101a13da968bcb006d9b89cb5c36ffcd08bdfb1102e7bd91bbe340b04ffea7478a0dda3dfa2df33412fcf9b6e6fb5af06952a82a6b6914')
 
 prepare() {
-  cp -a ${_realname}-${pkgver}{,-py2}
+  rm -rf python-build-${CARCH}
+  cp -r "path-${pkgver}" "python-build-${CARCH}"
+  # Set version for setuptools_scm
   export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
 }
 
 build() {
-  cd ${srcdir}/${_realname}-${pkgver}
-  python3 setup.py build
-
-  cd ${srcdir}/${_realname}-${pkgver}-py2
-  python2 setup.py build
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
 }
 
-#check() {
-#    cd ${srcdir}/${_realname}-${pkgver}
-#    py.test-3.6
-#
-#    cd ${srcdir}/${_realname}-${pkgver}-py2
-#    py.test-2.7
-#}
+check() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py pytest || true
+}
 
-package_python3-path() {
-  depends=("${MINGW_PACKAGE_PREFIX}-python3")
-
-  cd ${srcdir}/${_realname}-${pkgver}
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python3 setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1
-  install -d ${pkgdir}${MINGW_PREFIX}/share/licenses/python3-${_realname}
-  head -n 21 path.py > ${pkgdir}${MINGW_PREFIX}/share/licenses/python3-${_realname}/LICENSE
+  ${MINGW_PREFIX}/bin/python setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1 --skip-build
+
+  install -Dm644 LICENSE ${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE
 }
-
-package_python2-path() {
-  depends=("${MINGW_PACKAGE_PREFIX}-python2")
-
-  cd ${srcdir}/${_realname}-${pkgver}-py2
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python2 setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1
-  install -d ${pkgdir}${MINGW_PREFIX}/share/licenses/python2-${_realname}
-  head -n 21 path.py > ${pkgdir}${MINGW_PREFIX}/share/licenses/python2-${_realname}/LICENSE
-}
-
-package_mingw-w64-i686-python2-path() {
-  package_python2-path
-}
-
-package_mingw-w64-i686-python3-path() {
-  package_python3-path
-}
-
-package_mingw-w64-x86_64-python2-path() {
-  package_python2-path
-}
-
-package_mingw-w64-x86_64-python3-path() {
-  package_python3-path
-}
-
-# vim:set ts=2 sw=2 et:

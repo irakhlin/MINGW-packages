@@ -1,0 +1,54 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=oslo-serialization
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=3.1.0
+pkgrel=1
+pkgdesc="Oslo Serialization library (mingw-w64)"
+arch=('any')
+url='https://pypi.org/project/oslo.serialization/'
+license=('Apache')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-six" 
+         "${MINGW_PACKAGE_PREFIX}-python-pbr"
+         "${MINGW_PACKAGE_PREFIX}-python-babel"
+         "${MINGW_PACKAGE_PREFIX}-python-msgpack"
+         "${MINGW_PACKAGE_PREFIX}-python-oslo-utils"
+         "${MINGW_PACKAGE_PREFIX}-python-pytz")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-oslotest"
+              "${MINGW_PACKAGE_PREFIX}-python-testrepository")
+options=('staticlibs' 'strip' '!debug')
+source=("${_realname}-$pkgver.tar.gz"::"https://github.com/openstack/oslo.serialization/archive/${pkgver}.tar.gz")
+sha512sums=('449255ab5c07bd753942df4075725b8b0a6aa079ddf0a6f384ebe8751f3222df85eb63bd845fafe36ca64cf52f4fb0f51dae1f6d3a7faabf7981721eb9893b27')
+
+prepare() {
+  cd "${srcdir}/oslo.serialization-${pkgver}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+  # set version for pbr
+  export PBR_VERSION=${pkgver}
+}
+
+build() {
+  cd "${srcdir}/oslo.serialization-${pkgver}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  cd "${srcdir}/oslo.serialization-${pkgver}"
+  ${MINGW_PREFIX}/bin/python setup.py testr || warning "Tests failed"
+}
+
+package() {
+  cd "${srcdir}/oslo.serialization-${pkgver}"
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+}

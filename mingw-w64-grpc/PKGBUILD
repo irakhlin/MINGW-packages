@@ -3,45 +3,73 @@
 _realname=grpc
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=1.1.4
-pkgrel=1
+pkgver=1.27.2
+_abseil_ver=20190808
+pkgrel=2
 pkgdesc="gRPC - Google's high performance, open source, general RPC framework (mingw-w64)"
 arch=('any')
 url='https://www.grpc.io/'
 license=('BSD')
 depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs"
-         "${MINGW_PACKAGE_PREFIX}-protobuf>=3.0.0")
-makedepends=("${MINGW_PACKAGE_PREFIX}-gcc" "${MINGW_PACKAGE_PREFIX}-cmake" "automake" "autoconf")
+         "${MINGW_PACKAGE_PREFIX}-c-ares"
+         "${MINGW_PACKAGE_PREFIX}-gflags"
+         "${MINGW_PACKAGE_PREFIX}-openssl"
+         "${MINGW_PACKAGE_PREFIX}-protobuf>=3.5.0"
+         "${MINGW_PACKAGE_PREFIX}-zlib")
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
+             "${MINGW_PACKAGE_PREFIX}-cmake"
+             "automake" "autoconf")
 options=('staticlibs' 'strip')
 source=("${_realname}-${pkgver}.tar.gz::https://github.com/google/grpc/archive/v${pkgver}.tar.gz"
-        "googletest-release-1.8.0.tar.gz::https://github.com/google/googletest/archive/release-1.8.0.tar.gz"
-        0001-grpc-1_1_4-sin6.patch)
-sha256sums=('45ab5bdfa90ea41b17d4d81edbadcff303158b7cccdf9d7ea196ca9e104b214c'
-            '58a6f4277ca2bc8565222b3bbd58a177609e9c488e8a72649359ba51450db7d8'
-            'a9d5aac450e1f12efe7a5dc6b6378e8f7bd6135cf420c126a2ed3c54ffa43d43')
+        "abseil-cpp-${_abseil_ver}.tar.gz::https://github.com/abseil/abseil-cpp/archive/${_abseil_ver}.tar.gz"
+        001-fix-linking.patch
+        002-fix-verify-_WIN32_WINNT.patch
+        003-fix-absl-alarm.patch)
+
+sha256sums=('49c1cca77d07877b878b396b42655c71a412dc14bb95d4f959d6c8971a6bb908'
+            '8100085dada279bf3ee00cd064d43b5f55e5d913be0dfe2906f06f8f28d5b37e'
+            'c181c8a8d1b17b4f600369ca676efb54e5268542a9f9641bce3d5669e9b465d2'
+            '36669a7296e4c168b0880f9bac93beeb919775c789d0675d1f5b9bd0886fb706'
+            '7ec82a11e03ba8b255c62cd5299b5b9ef7ad98538bd3ea850c485ea0593878f2')
+
+noextract=(${_realname}-${pkgver}.tar.gz)
 
 prepare() {
+  [[ -d ${srcdir}/${_realname}-${pkgver} ]] && rm -rf ${srcdir}/${_realname}-${pkgver}
+  tar -xzf ${srcdir}/${_realname}-${pkgver}.tar.gz -C ${srcdir} || true
   cd "${srcdir}/${_realname}-${pkgver}"
+  patch -p1 -i ${srcdir}/001-fix-linking.patch
+  patch -p1 -i ${srcdir}/002-fix-verify-_WIN32_WINNT.patch
 
-  rmdir ./third_party/googletest
-  mv ../googletest-release-1.8.0 ./third_party/googletest
-
-  patch -p1 -i "${srcdir}/0001-grpc-1_1_4-sin6.patch"
+  rmdir ./third_party/abseil-cpp
+  mv ../abseil-cpp-${_abseil_ver} ./third_party/abseil-cpp
+  patch -p1 -i ${srcdir}/003-fix-absl-alarm.patch
 }
 
 build() {
   [[ -d "${srcdir}/build-${MINGW_CHOST}" ]] && rm -rf "${srcdir}/build-${MINGW_CHOST}"
-  cp -rf "${_realname}-${pkgver}" "build-${MINGW_CHOST}"
-  cd "${srcdir}/build-${MINGW_CHOST}"
+  mkdir -p "${srcdir}"/build-${MINGW_CHOST} && cd "${srcdir}"/build-${MINGW_CHOST}
 
   # remove __USE_MINGW_ANSI_STDIO=1 define, it breaks grpc string handling for
   # cases like 'gpr_log(GPR_DEBUG, "Failed to free %" PRIuPTR ...'
   CPPFLAGS=${CPPFLAGS//-D__USE_MINGW_ANSI_STDIO=1/}
 
-  # add build platform 0x0600 (minimum required for grpc):
-  CPPFLAGS+=" -D_WIN32_WINNT=0x0600"
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+  ${MINGW_PREFIX}/bin/cmake \
+      -Wno-dev \
+      -G"MSYS Makefiles" \
+      -DCMAKE_INSTALL_PREFIX="${MINGW_PREFIX}" \
+      -DCMAKE_BUILD_TYPE="Release" \
+      -DCMAKE_SKIP_RPATH="ON" \
+      -DBUILD_SHARED_LIBS="ON" \
+      -DgRPC_ZLIB_PROVIDER="package" \
+      -DgRPC_CARES_PROVIDER="package" \
+      -DgRPC_PROTOBUF_PROVIDER="package" \
+      -DgRPC_SSL_PROVIDER="package" \
+      -DgRPC_GFLAGS_PROVIDER="package" \
+      -DgRPC_BENCHMARK_PROVIDER="package" \
+      ../${_realname}-${pkgver}
 
-  make run_dep_checks
   make
 }
 
@@ -52,6 +80,6 @@ check() {
 
 package() {
   cd "${srcdir}/build-${MINGW_CHOST}"
-  make prefix="${pkgdir}/${MINGW_PREFIX}" install
+  make DESTDIR="${pkgdir}" install
   install -Dm644 "${srcdir}/${_realname}-${pkgver}/LICENSE" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
 }

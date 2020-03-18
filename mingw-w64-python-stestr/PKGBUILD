@@ -1,0 +1,94 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=stestr
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=2.6.0
+pkgrel=1
+pkgdesc="A test runner runner similar to testrepository (mingw-w64)"
+arch=('any')
+url='https://stestr.readthedocs.io/en/latest/'
+license=('Apache')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-cliff"
+         "${MINGW_PACKAGE_PREFIX}-python-fixtures"
+         "${MINGW_PACKAGE_PREFIX}-python-future"
+         "${MINGW_PACKAGE_PREFIX}-python-pbr"
+         "${MINGW_PACKAGE_PREFIX}-python-six"
+         "${MINGW_PACKAGE_PREFIX}-python-subunit"
+         "${MINGW_PACKAGE_PREFIX}-python-testtools"
+         "${MINGW_PACKAGE_PREFIX}-python-voluptuous"
+         "${MINGW_PACKAGE_PREFIX}-python-yaml")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+#checkdepends=('python-hacking' 'python-sphinx' 'python-mock'
+#              'python-subunit2sql' 'python-coverage' 'python-ddt')
+install=${_realname}3-${CARCH}.install
+options=('staticlibs' 'strip' '!debug')
+source=("https://pypi.io/packages/source/s/stestr/stestr-${pkgver}.tar.gz")
+sha512sums=('687e8fb7bcf011e3d84d012cd7389accb8e81633ec069df4fb501d0457cdf6147b9820bf24cb49c63e6698d1b8494f50576a8f0dc9e99c36fc175cd9ce88b7bd')
+
+# Helper macros to help make tasks easier #
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
+
+del_file_exists() {
+  for _fname in "$@"
+  do
+    if [ -f $_fname ]; then
+      rm -rf $_fname
+    fi
+  done
+}
+# =========================================== #
+
+prepare() {
+  cd "${srcdir}"
+#  pushd "${_realname}-${pkgver}"
+#    apply_patch_with_msg 0001-A-really-important-fix.patch \
+#      0002-A-less-important-fix.patch
+#  popd 
+
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+}
+
+build() {
+  msg "Python build for ${CARCH}"  
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+#check() {
+#  msg "Python test for ${CARCH}"
+#  cd "${srcdir}/python-build-${CARCH}"
+#  export PYTHONPATH="$PWD/tmp_install/usr/lib/python3.8/site-packages"
+#  export PATH="$PWD/tmp_install/usr/bin:$PATH"
+#  stestr run || warning "Tests failed"
+#}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE"
+
+  local PREFIX_WIN=$(cygpath -wm ${MINGW_PREFIX})
+  # fix python command in files
+  for _f in "${pkgdir}${MINGW_PREFIX}"/bin/*.py; do
+    sed -e "s|/usr/bin/env |${MINGW_PREFIX}|g" \
+        -e "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" -i ${_f}
+  done
+}

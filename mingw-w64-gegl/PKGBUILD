@@ -4,38 +4,36 @@
 _realname=gegl
 pkgbase="mingw-w64-${_realname}"
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-provides=("${MINGW_PACKAGE_PREFIX}-${_realname}")
-conflicts=("${MINGW_PACKAGE_PREFIX}-${_realname}")
-replaces=("${MINGW_PACKAGE_PREFIX}-${_realname}-git")
-pkgver=0.3.20
+pkgver=0.4.22
 pkgrel=1
 pkgdesc="Generic Graphics Library (mingw-w64)"
 arch=('any')
 url="http://gegl.org/"
-license=("GPL-3.0+" "LGPL-3.0+")
-makedepends=("asciidoc"
-             "intltool"
-             #"${MINGW_PACKAGE_PREFIX}-ffmpeg"
+license=("GPL3" "LGPL3")
+makedepends=("${MINGW_PACKAGE_PREFIX}-asciidoc"
              "${MINGW_PACKAGE_PREFIX}-gcc"
              "${MINGW_PACKAGE_PREFIX}-gobject-introspection"
-             "${MINGW_PACKAGE_PREFIX}-lua"
+             "${MINGW_PACKAGE_PREFIX}-gtk-doc"
+             "${MINGW_PACKAGE_PREFIX}-luajit"
              "${MINGW_PACKAGE_PREFIX}-pkg-config"
-             "${MINGW_PACKAGE_PREFIX}-python2"
              "${MINGW_PACKAGE_PREFIX}-ruby"
-             "${MINGW_PACKAGE_PREFIX}-vala")
+             "${MINGW_PACKAGE_PREFIX}-vala"
+             "${MINGW_PACKAGE_PREFIX}-ffmpeg"
+             "${MINGW_PACKAGE_PREFIX}-meson"
+             "${MINGW_PACKAGE_PREFIX}-ninja")
 depends=("${MINGW_PACKAGE_PREFIX}-babl"
          "${MINGW_PACKAGE_PREFIX}-cairo"
          "${MINGW_PACKAGE_PREFIX}-exiv2"
+         "${MINGW_PACKAGE_PREFIX}-gexiv2"
          "${MINGW_PACKAGE_PREFIX}-gcc-libs"
          "${MINGW_PACKAGE_PREFIX}-gdk-pixbuf2"
          "${MINGW_PACKAGE_PREFIX}-gettext"
          "${MINGW_PACKAGE_PREFIX}-glib2"
-         "${MINGW_PACKAGE_PREFIX}-gtk2"
          "${MINGW_PACKAGE_PREFIX}-jasper"
          "${MINGW_PACKAGE_PREFIX}-json-glib"
          "${MINGW_PACKAGE_PREFIX}-libjpeg"
          "${MINGW_PACKAGE_PREFIX}-libpng"
-         "${MINGW_PACKAGE_PREFIX}-LibRaw"
+         "${MINGW_PACKAGE_PREFIX}-libraw"
          "${MINGW_PACKAGE_PREFIX}-librsvg"
          "${MINGW_PACKAGE_PREFIX}-libspiro"
          "${MINGW_PACKAGE_PREFIX}-libwebp"
@@ -43,56 +41,53 @@ depends=("${MINGW_PACKAGE_PREFIX}-babl"
          "${MINGW_PACKAGE_PREFIX}-lensfun"
          "${MINGW_PACKAGE_PREFIX}-openexr"
          "${MINGW_PACKAGE_PREFIX}-pango"
-         "${MINGW_PACKAGE_PREFIX}-SDL")
-#optdepends=("${MINGW_PACKAGE_PREFIX}-openexr: for using the openexr plugin"
-#            "${MINGW_PACKAGE_PREFIX}-ffmpeg: for using the ffmpeg plugin"
-#            "${MINGW_PACKAGE_PREFIX}-librsvg: for using the svg plugin"
-#            "${MINGW_PACKAGE_PREFIX}-jasper: for using the jasper plugin")
+         "${MINGW_PACKAGE_PREFIX}-SDL2"
+         "${MINGW_PACKAGE_PREFIX}-suitesparse")
+optdepends=("${MINGW_PACKAGE_PREFIX}-ffmpeg: for using the ffmpeg plugin")
 #options=('!strip' 'debug')
-source=(#"${_realname}"::"git+https://git.gnome.org/browse/gegl"
-        https://ftp.gtk.org/pub/gegl/${pkgver%.*}/${_realname}-${pkgver}.tar.bz2)
-sha256sums=('821568d17dc92a46f6105644c4f4d497daea2be794006140a016ed34e05eb084')
+noextract=("${_realname}-${pkgver}.tar.xz")
+source=(https://ftp.gtk.org/pub/gegl/${pkgver%.*}/${_realname}-${pkgver}.tar.xz
+        "asciidoc-fix-missing-dll.patch")
+sha256sums=('1888ec41dfd19fe28273795c2209efc1a542be742691561816683990dc642c61'
+            '2c2d800d2f4693e21443a2ba745bb05a23f993886e0d00e0b64fe8c3af1f35d5')
 
 prepare() {
-  cd ${srcdir}/${_realname}-${pkgver}
-  #autoreconf --force --install --verbose
+  cd "${srcdir}"
+  tar -xf "${_realname}-${pkgver}.tar.xz" || true
+  cd "${srcdir}/${_realname}-${pkgver}"
+  cp bin/lua/gegl_rectangle.lua bin/lua/gegl_crop.lua
+  cp bin/lua/gegl_vector-stroke.lua bin/lua/gegl_fill-path.lua
+
+  patch -p1 -i "${srcdir}"/asciidoc-fix-missing-dll.patch
 }
 
 build() {
-  declare -a extra_config
+  [[ -d "${srcdir}"/build-${MINGW_CHOST} ]] && rm -rf "${srcdir}"/build-${MINGW_CHOST}
+  mkdir -p "${srcdir}"/build-${MINGW_CHOST} && cd "${srcdir}"/build-${MINGW_CHOST}
 
-  if check_option "debug" "y"; then
-    extra_config+=("--enable-debug")
-    VERBOSE="V=1"
-    export DISTUTILS_DEBUG=1
-  fi
+  meson \
+    --buildtype=plain \
+    --auto-features=enabled \
+    -Dlibv4l=disabled \
+    -Dlibv4l2=disabled \
+    -Dmrg=disabled \
+    -Dpygobject=disabled \
+    -Dsdl1=disabled \
+    -Dintrospection=true \
+    -Ddocs=true \
+    "../${_realname}-${pkgver}"
 
-  export lt_cv_deplibs_check_method='pass_all'
-  mkdir -p "${srcdir}/build-${MINGW_CHOST}"
-  cd "${srcdir}/build-${MINGW_CHOST}"
-
-  ../${_realname}-${pkgver}/configure \
-    --prefix=${MINGW_PREFIX} \
-    --build=${MINGW_CHOST} \
-    --host=${MINGW_CHOST} \
-    --enable-shared \
-    --disable-static \
-    --with-sdl \
-    --with-openexr \
-    --with-librsvg \
-    --with-jasper \
-    --without-libavformat \
-    --disable-docs \
-    --with-vala \
-    --enable-introspection \
-    "${extra_config[@]}"
-
-  make ${VERBOSE}
+  ninja
 }
 
 package() {
   cd "${srcdir}/build-${MINGW_CHOST}"
-  make DESTDIR="${pkgdir}" install
-  find "${pkgdir}${MINGW_PREFIX}" -name '*.def' -o -name '*.exp' | xargs -rtl1 rm
+
+  DESTDIR="${pkgdir}${MINGW_PREFIX}" ninja install
+
+  for pcfile in "${pkgdir}${MINGW_PREFIX}"/lib/pkgconfig/*.pc; do
+    sed -s "s|$(cygpath -m ${MINGW_PREFIX})|${MINGW_PREFIX}|g" -i "${pcfile}"
+  done
+
   rm "${pkgdir}${MINGW_PREFIX}"/lib/gegl-*/*.dll.a
 }

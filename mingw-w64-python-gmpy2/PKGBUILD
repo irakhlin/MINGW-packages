@@ -1,0 +1,80 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=gmpy2
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=2.1.0b4
+pkgrel=1
+pkgdesc="Provides C-coded Python modules for fast multiple-precision arithmetic (mingw-w64)"
+arch=('any')
+url='https://github.com/aleaxit/gmpy'
+license=('LGPL2.1')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-mpc")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+options=('staticlibs' 'strip' '!debug')
+source=("${_realname}-${pkgver}.tar.gz"::"https://github.com/aleaxit/gmpy/archive/${_realname}-${pkgver}.tar.gz")
+noextract=("${_realname}-${pkgver}.tar.gz")
+sha256sums=('83589062bc2b221080d6e32aa197b845be16dcda8aa0f92781854636f17b0a5b')
+
+# Helper macros to help make tasks easier #
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
+
+del_file_exists() {
+  for _fname in "$@"
+  do
+    if [ -f $_fname ]; then
+      rm -rf $_fname
+    fi
+  done
+}
+# =========================================== #
+
+prepare() {
+  cd "${srcdir}"
+  # bsd tar does not handle the symlinks in the distribution file
+  # at least if you don't have admin privilleges. This is just a workaround
+  # for that.
+  tar zxf "${_realname}-${pkgver}.tar.gz" || true
+  pushd "gmpy-${_realname}-${pkgver}"
+  cp src/gmpy2.h gmpy2/gmpy2.h
+  cp src/gmpy2.pxd gmpy2/gmpy2.pxd
+  popd
+
+  rm -rf python-build-${CARCH} | true
+  cp -r "gmpy-${_realname}-${pkgver}" "python-build-${CARCH}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+}
+
+build() {
+  msg "Python build for ${CARCH}"  
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  msg "Python test for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py check
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  install -d -m 755 ${pkgdir}${MINGW_PREFIX}/share/doc/python-${_realname}
+  install -m 644 -t ${pkgdir}${MINGW_PREFIX}/share/doc/python-${_realname} docs/*
+}

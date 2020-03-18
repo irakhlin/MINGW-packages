@@ -1,0 +1,79 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=pyzopfli
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=0.1.7
+_zopfliver=1.0.3
+pkgrel=1
+pkgdesc="Python bindings for the Zopfli compressor (mingw-w64)"
+arch=('any')
+url='https://github.com/obp/py-zopfli/'
+license=('Apache')
+depends=("${MINGW_PACKAGE_PREFIX}-python")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+options=('staticlibs' 'strip' '!debug')
+source=("${_realname}-${pkgver}.tar.gz"::"https://github.com/obp/py-zopfli/archive/v${pkgver}.tar.gz"
+        "zopfli-${_zopfliver}.tar.gz"::"https://github.com/google/zopfli/archive/zopfli-${_zopfliver}.tar.gz"
+        win32-fixes.patch)
+sha256sums=('ede550b2a9a9880b7ca043e185d1c5da407166ac3aa1916c44e8d301bbbfe29e'
+            'e955a7739f71af37ef3349c4fa141c648e8775bceb2195be07e86f8e638814bd'
+            '3adb302978fb0c47adf0eeb641b6674add71fd6af9a22497fbeffb991e78dddd')
+
+# Helper macros to help make tasks easier #
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/${_patch}"
+  done
+}
+
+del_file_exists() {
+  for _fname in "$@"
+  do
+    if [ -f $_fname ]; then
+      rm -rf $_fname
+    fi
+  done
+}
+# =========================================== #
+
+prepare() {
+  cd "${srcdir}"
+  # for this, you have to something weird, extract zopfli into a dir
+  # named zopfli py-zopfli dir.  We also have to patch zopfli to match what
+  # is in the mingw-w64-zopfli because that gives a serious warning about Win32.
+  rm -rf py-zopfli-${pkgver}/zopfli
+  pushd zopfli-zopfli-${_zopfliver}
+  apply_patch_with_msg win32-fixes.patch
+  popd
+  cp -r "zopfli-zopfli-${_zopfliver}" "py-zopfli-${pkgver}/zopfli/"
+
+  rm -rf python-build-${CARCH} | true
+  cp -r "py-zopfli-${pkgver}" "python-build-${CARCH}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+}
+
+build() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py check
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+}

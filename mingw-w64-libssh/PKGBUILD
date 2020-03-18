@@ -3,7 +3,7 @@
 _realname=libssh
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=0.7.5
+pkgver=0.9.3
 pkgrel=1
 pkgdesc="Library for accessing ssh client services through C libraries (mingw-w64)"
 arch=('any')
@@ -12,30 +12,39 @@ license=("LGPL")
 install=libssh-${CARCH}.install
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
              "${MINGW_PACKAGE_PREFIX}-pkg-config"
-             "${MINGW_PACKAGE_PREFIX}-cmake")
+             "${MINGW_PACKAGE_PREFIX}-cmake"
+             "${MINGW_PACKAGE_PREFIX}-cmocka")
 depends=("${MINGW_PACKAGE_PREFIX}-openssl"
          "${MINGW_PACKAGE_PREFIX}-zlib")
 options=('staticlibs' 'strip')
 validpgpkeys=('8DFF53E18F2ABC8D8F3C92237EE0FC4DCC014E3D') # Andreas Schneider <asn@cryptomilk.org>
-source=(https://red.libssh.org/attachments/download/218/${_realname}-${pkgver}.tar.xz
-        https://red.libssh.org/attachments/download/217/${_realname}-${pkgver}.tar.asc
-        mingw-as-unix.patch
-        mingw-DATADIR-conflict.patch
-        fix-threads-libraryname-in-config.patch)
-sha256sums=('54e86dd5dc20e5367e58f3caab337ce37675f863f80df85b6b1614966a337095'
+source=("https://www.libssh.org/files/${pkgver%.*}/${_realname}-${pkgver}.tar.xz"
+        "https://www.libssh.org/files/${pkgver%.*}/${_realname}-${pkgver}.tar.xz.asc"
+        "mingw-as-unix.patch"
+         001-install-static-lib.patch)
+sha256sums=('2c8b5f894dced58b3d629f16f3afa6562c20b4bdc894639163cf657833688f0c'
             'SKIP'
-            '3e95048aa0acf0a639120cb732dcce14ea1e51a7ed59b18a25e05001ebabd241'
-            '444a66b1926f49c54df844c22263496c2d86e124c8bcdbd194c4581d06140c1b'
-            'a69b444d4a9b1861991661d5f3ca8d2ab705fac1f5766a79730328b0bdd86691')
+            'bac0a32f54368f55abbce14dea3dfba27a24321d590022b93bb8369a2aaa4993'
+            'eca5206ca1d3b3ff76fab5759ab1a8387655fe31c383a2d125d8e13c86098bd8')
+noextract=(${_realname}-${pkgver}.tar.xz)
 
 prepare() {
+  [[ -d ${_realname}-${pkgver} ]] && rm -rf ${_realname}-${pkgver}
+  tar -xJvf ${_realname}-${pkgver}.tar.xz -C ${srcdir} || true
+
   cd ${srcdir}/${_realname}-${pkgver}
   patch -p1 -i ${srcdir}/mingw-as-unix.patch
-  patch -p1 -i ${srcdir}/mingw-DATADIR-conflict.patch
-  patch -p1 -i ${srcdir}/fix-threads-libraryname-in-config.patch
+  patch -p1 -i ${srcdir}/001-install-static-lib.patch
 }
 
 build() {
+  declare -a extra_config
+  if check_option "debug" "n"; then
+    extra_config+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    extra_config+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
   [[ -d ${srcdir}/build-${MINGW_CHOST} ]] && rm -rf ${srcdir}/build-${MINGW_CHOST}
   mkdir -p ${srcdir}/build-${MINGW_CHOST} && cd ${srcdir}/build-${MINGW_CHOST}
 
@@ -43,11 +52,19 @@ build() {
   ${MINGW_PREFIX}/bin/cmake.exe \
     -G"MSYS Makefiles" \
     -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DWITH_STATIC_LIB=ON \
+    ${extra_config} \
+    -DWITH_GSSAPI=OFF \
+    -DUNIT_TESTING=ON \
+    -DBUILD_STATIC_LIB=ON \
+    -DBUILD_SHARED_LIBS=ON \
     ../${_realname}-${pkgver}
 
   make all
+}
+
+check() {
+  cd "${srcdir}/build-${MINGW_CHOST}"
+  make test
 }
 
 package() {

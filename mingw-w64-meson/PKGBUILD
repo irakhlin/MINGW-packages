@@ -3,58 +3,53 @@
 _realname=meson
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=0.42.1
+pkgver=0.53.2
 pkgrel=1
 pkgdesc="High-productivity build system (mingw-w64)"
 arch=('any')
-url="http://mesonbuild.com/"
+url="https://mesonbuild.com/"
 license=("Apache 2")
 options=('strip' 'staticlibs')
 depends=("${MINGW_PACKAGE_PREFIX}-python3"
+         "${MINGW_PACKAGE_PREFIX}-python3-setuptools"
          "${MINGW_PACKAGE_PREFIX}-ninja")
-source=(https://github.com/mesonbuild/${_realname}/releases/download/${pkgver}/${_realname}-${pkgver}.tar.gz
-        'force-func-detect.patch'
-        'no-script-suffix.patch'
+source=("https://github.com/mesonbuild/${_realname}/releases/download/${pkgver}/${_realname}-${pkgver}.tar.gz"
         'color-term.patch'
-        )
-sha256sums=('30bdded6fefc48211d30818d96dd34aae56ee86ce9710476f501bd7695469c4b'
-            '8c91268fad351862a6feb92f5d20c1be50d9948c14897edf2c60a771c4e52946'
-            'ffa0f8ed4df3ae73ab6cb42d49e4cb9148f095ad308276d4c18b65d6856467bb'
-            'eee384da0f3703ef64d088e9ad79be8a25566de1b0410b5e40f574e40cc41a65'
-           )
+        '0002-Default-to-sys.prefix-as-the-default-prefix.patch'
+        '0003-Strip-the-prefix-from-all-paths-when-installing-with.patch'
+        'install-man.patch')
+sha256sums=('3e8f830f33184397c2eb0b651ec502adb63decb28978bdc84b3558d71284c21f'
+            '5805aed0a117536eb16dd8eef978c6be57c2471b655ede63e25517c28b4f4cf0'
+            '4ef1e6fb0e9bd927b4646e416631b8a0a9aece763d259dbba58168bcba93f673'
+            '2093c617cf3146a4cea601e7c73400d8ec5fd52ac5cf642c4f5af2d6493b1cb1'
+            '0682a36cb75e545a78b81293303835a16171f25baf949905dc08029436efff84')
 
 prepare() {
   cd "${srcdir}/${_realname}-${pkgver}"
 
-  # https://github.com/mesonbuild/meson/issues/1083
-  patch -Np1 -i "${srcdir}"/force-func-detect.patch
-  patch -Np1 -i "${srcdir}"/no-script-suffix.patch
   patch -Np1 -i "${srcdir}"/color-term.patch
+  patch -Np1 -i "${srcdir}"/0002-Default-to-sys.prefix-as-the-default-prefix.patch
+  patch -Np1 -i "${srcdir}"/0003-Strip-the-prefix-from-all-paths-when-installing-with.patch
+  patch -Np1 -i "${srcdir}"/install-man.patch
 }
 
 build() {
-  cd "${srcdir}/${_realname}-${pkgver}"
-  PYTHON=${MINGW_PREFIX}/bin/python3 ${MINGW_PREFIX}/bin/python3 setup.py build
+  [[ -d "${srcdir}"/build-${CARCH} ]] && rm -rf "${srcdir}"/build-${CARCH}
+  cp -rf "${srcdir}"/${_realname}-${pkgver}/. "${srcdir}"/build-${CARCH} && cd "${srcdir}"/build-${CARCH}
+
+  ${MINGW_PREFIX}/bin/python3 setup.py build
 }
 
 package() {
-  cd "${srcdir}/${_realname}-${pkgver}"
+  cd "${srcdir}"/build-${CARCH}
 
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
   ${MINGW_PREFIX}/bin/python3 setup.py \
     install --prefix=${MINGW_PREFIX} --root="${pkgdir}"
 
   PREFIX_WIN=$(cygpath -m ${MINGW_PREFIX})
-  sed -s "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" \
-    -i "${pkgdir}${MINGW_PREFIX}/bin/meson"
-  sed -s "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" \
-    -i "${pkgdir}${MINGW_PREFIX}/bin/mesonconf"
-  sed -s "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" \
-    -i "${pkgdir}${MINGW_PREFIX}/bin/mesonintrospect"
-  sed -s "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" \
-    -i "${pkgdir}${MINGW_PREFIX}/bin/mesontest"
-  sed -s "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" \
-    -i "${pkgdir}${MINGW_PREFIX}/bin/wraptool"
+  sed -s "s|${PREFIX_WIN}/bin/||g" \
+    -i "${pkgdir}${MINGW_PREFIX}/bin/meson-script.py"
 
   install -Dm644 "${srcdir}/${_realname}-${pkgver}/COPYING" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING"
 }

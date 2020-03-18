@@ -2,60 +2,43 @@
 
 _realname=pyparsing
 pkgbase=mingw-w64-python-${_realname}
-pkgname=("${MINGW_PACKAGE_PREFIX}-python2-${_realname}" "${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
-pkgver=2.2.0
-pkgrel=2
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=2.4.6
+pkgrel=1
 pkgdesc='General parsing module for Python (mingw-w64)'
 arch=('any')
 url='https://pyparsing.wikispaces.com/'
 license=('MIT')
-makedepends=("${MINGW_PACKAGE_PREFIX}-python3"
-             "${MINGW_PACKAGE_PREFIX}-python2")
-source=("https://downloads.sourceforge.net/pyparsing/pyparsing-${pkgver}.tar.gz")
-sha256sums=('0832bcf47acd283788593e7a0f542407bd9550a55a8a8435214a1960e04bcb04')
+depends=("${MINGW_PACKAGE_PREFIX}-python")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+source=("https://github.com/pyparsing/pyparsing/archive/pyparsing_${pkgver}.tar.gz")
+sha512sums=('475b77f469d2051fb067796849f7c7d3df145f2c6cefc708c904a5b0af22661b4c229c521c2cac3c94621dde9bda6b28e428a8e31d936df6d4596d993263981e')
 
 prepare() {
   cd "$srcdir"/
-  for pver in {2,3}; do 
-    rm -rf python${pver}-build-${CARCH} | true
-    cp -r "${_realname}-${pkgver}" "python${pver}-build-${CARCH}"
-  done  
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${_realname}_${pkgver}" "python-build-${CARCH}"
 }
 
-package_python3-pyparsing() {
-  depends=("${MINGW_PACKAGE_PREFIX}-python3")
+build() {
+  msg "Python build for ${CARCH}"  
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
 
-  cd ${srcdir}/python3-build-${CARCH}
+check() {
+  msg "Python  test for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python unitTests.py
+}
+package() {
+  cd ${srcdir}/python-build-${CARCH}
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python3 setup.py install --prefix=${MINGW_PREFIX} \
-    --root="${pkgdir}" --optimize=1
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
 
-  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python3-${_realname}/LICENSE"
-}
-
-package_python2-pyparsing() {
-  depends=("${MINGW_PACKAGE_PREFIX}-python2")
-
-  cd ${srcdir}/python2-build-${CARCH}
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python2 setup.py install --prefix=${MINGW_PREFIX} \
-    --root="${pkgdir}" --optimize=1
-
-  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python2-${_realname}/LICENSE"
-}
-
-package_mingw-w64-i686-python2-pyparsing() {
-  package_python2-pyparsing
-}
-
-package_mingw-w64-i686-python3-pyparsing() {
-  package_python3-pyparsing
-}
-
-package_mingw-w64-x86_64-python2-pyparsing() {
-  package_python2-pyparsing
-}
-
-package_mingw-w64-x86_64-python3-pyparsing() {
-  package_python3-pyparsing
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE"
 }

@@ -3,17 +3,18 @@
 _realname=proj
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=4.9.3
+pkgver=6.3.1
 pkgrel=1
 pkgdesc="Cartographic projection software (PROJ.4) (mingw-w64)"
 arch=(any)
 url="https://trac.osgeo.org/proj/"
 license=('MIT')
-depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs")
+depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs"
+         "${MINGW_PACKAGE_PREFIX}-sqlite3")
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc" "${MINGW_PACKAGE_PREFIX}-libtool")
 options=('staticlibs' 'strip')
-source=("http://download.osgeo.org/proj/${_realname}-${pkgver}.tar.gz")
-sha256sums=('6984542fea333488de5c82eea58d699e4aff4b359200a9971537cd7e047185f7')
+source=("https://download.osgeo.org/proj/${_realname}-${pkgver}.tar.gz")
+sha256sums=('6de0112778438dcae30fcc6942dee472ce31399b9e5a2b67e8642529868c86f8')
 
 prepare() {
   cd "${srcdir}/${_realname}-${pkgver}"
@@ -21,8 +22,7 @@ prepare() {
 
 build() {
   [[ -d "${srcdir}/build-${MINGW_CHOST}" ]] && rm -rf "${srcdir}/build-${MINGW_CHOST}"
-  mkdir "${srcdir}/build-${MINGW_CHOST}"
-  cd "${srcdir}/build-${MINGW_CHOST}"
+  mkdir "${srcdir}/build-${MINGW_CHOST}" && cd "${srcdir}/build-${MINGW_CHOST}"
 
   ../${_realname}-${pkgver}/configure \
     --prefix=${MINGW_PREFIX} \
@@ -37,4 +37,5 @@ package() {
   cd "${srcdir}/build-${MINGW_CHOST}"
   make DESTDIR="${pkgdir}" install
   find "${pkgdir}${MINGW_PREFIX}" -name '*.def' -o -name '*.exp' | xargs -rtl1 rm
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}/COPYING" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING"
 }

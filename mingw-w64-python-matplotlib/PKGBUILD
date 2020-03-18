@@ -1,134 +1,66 @@
-# Contributor: Runar Tenfjord < runar dot tenfjord at gmail dot com >
+# Contributor: Christoph Reiter <reiter.chrsitoph@gmail.com>
 
 _realname=matplotlib
 pkgbase=mingw-w64-python-${_realname}
-pkgname=("${MINGW_PACKAGE_PREFIX}-python2-${_realname}" "${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
-pkgver=2.0.2
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=3.2.0
 pkgrel=1
 pkgdesc="A python plotting library, making publication quality plots (mingw-w64)"
 arch=('any')
 url='https://matplotlib.org/'
 license=('custom')
-makedepends=(
-            "${MINGW_PACKAGE_PREFIX}-python2-pytz"
-            "${MINGW_PACKAGE_PREFIX}-python3-pytz"
-            "${MINGW_PACKAGE_PREFIX}-python2-numpy"
-            "${MINGW_PACKAGE_PREFIX}-python3-numpy"
-            "${MINGW_PACKAGE_PREFIX}-python2-cairo"
-            "${MINGW_PACKAGE_PREFIX}-python3-cairo"
-            "${MINGW_PACKAGE_PREFIX}-python2-pyqt5"
-            "${MINGW_PACKAGE_PREFIX}-python3-pyqt5"
-            "${MINGW_PACKAGE_PREFIX}-python2-dateutil"
-            "${MINGW_PACKAGE_PREFIX}-python3-dateutil"
-            "${MINGW_PACKAGE_PREFIX}-python2-pyparsing"
-            "${MINGW_PACKAGE_PREFIX}-python3-pyparsing"
-            "${MINGW_PACKAGE_PREFIX}-python2-cycler"
-            "${MINGW_PACKAGE_PREFIX}-python3-cycler"
-            "${MINGW_PACKAGE_PREFIX}-freetype"
-            "${MINGW_PACKAGE_PREFIX}-libpng"
-            #"${MINGW_PACKAGE_PREFIX}-qhull"
-            )
+depends=("${MINGW_PACKAGE_PREFIX}-python-pytz"
+         "${MINGW_PACKAGE_PREFIX}-python-numpy"
+         "${MINGW_PACKAGE_PREFIX}-python-cycler"
+         "${MINGW_PACKAGE_PREFIX}-python-dateutil"
+         "${MINGW_PACKAGE_PREFIX}-python-pyparsing"
+         "${MINGW_PACKAGE_PREFIX}-python-kiwisolver"
+         "${MINGW_PACKAGE_PREFIX}-freetype"
+         "${MINGW_PACKAGE_PREFIX}-libpng")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python"
+             "${MINGW_PACKAGE_PREFIX}-python-setuptools")
+optdepends=("${MINGW_PACKAGE_PREFIX}-python-pyqt5: Qt5Agg/Qt5Cairo backend"
+            "${MINGW_PACKAGE_PREFIX}-gtk3: GTK3Agg/GTK3Cairo backend"
+            "${MINGW_PACKAGE_PREFIX}-python-gobject: GTK3Agg/GTK3Cairo backend"
+            "${MINGW_PACKAGE_PREFIX}-python-cairo: cairo/GTK3Cairo/Qt5Cairo backend"
+            "${MINGW_PACKAGE_PREFIX}-python-tornado: WebAgg backend")
 source=("${_realname}-${pkgver}.tar.gz"::"https://github.com/matplotlib/matplotlib/archive/v${pkgver}.tar.gz"
-        setupext.py.patch
-        setup.py.patch)
-sha256sums=('aebed23921562792b68b8ca355de5abc176af4424f1987e2fa95f65e5c5e7e89'
-            '76bd90000ed3c2b77db97db4fdf7e84a4c5e34e966f1a4feb6c91635df5c10ff'
-            '8d5128f3d1bc467832ec382456541f4aa32959a88d36ee33dc88d9035416017e')
-noextract=("${_realname}-${pkgver}.tar.gz")
+        "https://jqueryui.com/resources/download/jquery-ui-1.12.1.zip"
+        setupext.py.patch)
+sha256sums=('82239f040054260a34e19d381c6d3f3729929599c444b613d115e1e30526ac17'
+            'f8233674366ab36b2c34c577ec77a3d70cac75d2e387d8587f3836345c0f624d'
+            'a2f0e6b9f7e40881cb1b83025f8797e1431d97068189c2a0468bb84f7ce28945')
 
 prepare() {
-  # Clean up old sources so re-patching doesn't fail.
-  [[ -d ${srcdir}/${_realname}-${pkgver} ]] && rm -rf $srcdir/${_realname}-${pkgver}
-  tar -xzvf ${_realname}-${pkgver}.tar.gz -C ${srcdir}
-
-  cd ${srcdir}/${_realname}-${pkgver}
+  cd "${srcdir}/${_realname}-${pkgver}"
   patch -p1 -i ${srcdir}/setupext.py.patch
-  patch -p1 -i ${srcdir}/setup.py.patch
+
   cd ${srcdir}
-
-  cp -a ${_realname}-${pkgver} ${_realname}-py2-${pkgver}
-  cp -a ${_realname}-${pkgver} ${_realname}-py3-${pkgver}
-
-  cd ${srcdir}/${_realname}-py3-${pkgver}
-  # remove cairo which fails for python3
-  sed -i 's/setupext\.BackendGtk3Cairo/#setupext\.BackendGtk3Cairo/g' setup.py
-  sed -i 's/setupext\.BackendCairo/#setupext\.BackendCairo/g' setup.py
-
-  cd ${srcdir}/${_realname}-py2-${pkgver}
-  sed -e "s|#![ ]*/usr/bin/python$|#!/usr/bin/env python2|" \
-    -e "s|#![ ]*/usr/bin/env python$|#!/usr/bin/env python2|" \
-    -e "s|#![ ]*/bin/env python$|#!/usr/bin/env python2|" \
-    -i $(find . -name '*.py')
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
 }
 
 build() {
-  cd ${srcdir}/${_realname}-py2-${pkgver}
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python2 setup.py build
+  cd "${srcdir}/python-build-${CARCH}"
 
-  cd ${srcdir}/${_realname}-py3-${pkgver}
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python3 setup.py build
+    ${MINGW_PREFIX}/bin/python setup.py build
 }
 
-package_python3-matplotlib() {
-    depends=(
-        "${MINGW_PACKAGE_PREFIX}-python3-pytz"
-        "${MINGW_PACKAGE_PREFIX}-python3-numpy"
-        "${MINGW_PACKAGE_PREFIX}-python3-cairo"
-        "${MINGW_PACKAGE_PREFIX}-python3-cycler"
-        "${MINGW_PACKAGE_PREFIX}-python3-pyqt5"
-        "${MINGW_PACKAGE_PREFIX}-python3-dateutil"
-        "${MINGW_PACKAGE_PREFIX}-python3-pyparsing"
-        "${MINGW_PACKAGE_PREFIX}-freetype"
-        "${MINGW_PACKAGE_PREFIX}-libpng"
-        #"${MINGW_PACKAGE_PREFIX}-qhull"
-    )
-   cd ${srcdir}/${_realname}-py3-${pkgver}
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
 
-   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-   ${MINGW_PREFIX}/bin/python3 setup.py install -O1 --skip-build \
+  local pyver=$(${MINGW_PREFIX}/bin/python -c "import sys;sys.stdout.write('.'.join(map(str, sys.version_info[:2])))")
+  local query_dest="${pkgdir}${MINGW_PREFIX}/lib/python${pyver}/site-packages/matplotlib/backends/web_backend"
+  mkdir -p "${query_dest}"
+  cp -R "${srcdir}/jquery-ui-1.12.1" "${query_dest}"
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+   ${MINGW_PREFIX}/bin/python setup.py install -O1 --skip-build \
    --root="${pkgdir}" --prefix=${MINGW_PREFIX}
 
-   install -Dm644 doc/users/license.rst "${pkgdir}${MINGW_PREFIX}"/share/licenses/python3-matplotlib/LICENSE
+  install -Dm644 doc/users/license.rst "${pkgdir}${MINGW_PREFIX}"/share/licenses/python-matplotlib/LICENSE
 }
-
-package_python2-matplotlib() {
-    depends=(
-        "${MINGW_PACKAGE_PREFIX}-python2-pytz"
-        "${MINGW_PACKAGE_PREFIX}-python2-numpy"
-        "${MINGW_PACKAGE_PREFIX}-python2-cairo"
-        "${MINGW_PACKAGE_PREFIX}-python2-cycler"
-        "${MINGW_PACKAGE_PREFIX}-python2-pyqt5"
-        "${MINGW_PACKAGE_PREFIX}-python2-dateutil"
-        "${MINGW_PACKAGE_PREFIX}-python2-pyparsing"
-        "${MINGW_PACKAGE_PREFIX}-freetype"
-        "${MINGW_PACKAGE_PREFIX}-libpng"
-        #"${MINGW_PACKAGE_PREFIX}-qhull"
-    )
-   cd ${srcdir}/${_realname}-py2-${pkgver}
-
-   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-   ${MINGW_PREFIX}/bin/python2 setup.py install -O1 --skip-build \
-   --root="${pkgdir}" --prefix=${MINGW_PREFIX}
-
-   install -Dm644 doc/users/license.rst "${pkgdir}${MINGW_PREFIX}"/share/licenses/python2-matplotlib/LICENSE
-}
-
-package_mingw-w64-i686-python2-matplotlib() {
-  package_python2-matplotlib
-}
-
-package_mingw-w64-i686-python3-matplotlib() {
-  package_python3-matplotlib
-}
-
-package_mingw-w64-x86_64-python2-matplotlib() {
-  package_python2-matplotlib
-}
-
-package_mingw-w64-x86_64-python3-matplotlib() {
-  package_python3-matplotlib
-}
-
-# vim:set ts=2 sw=2 et:

@@ -4,21 +4,21 @@ _realname=scite
 pkgbase=mingw-w64-${_realname}
 pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}"
          "${MINGW_PACKAGE_PREFIX}-${_realname}-defaults")
-pkgver=3.7.4
+pkgver=4.3.2
 pkgrel=1
 arch=('any')
-url='http://www.scintilla.org/SciTE.html'
+url='https://www.scintilla.org/SciTE.html'
 license=('custom:scite')
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
              "${MINGW_PACKAGE_PREFIX}-gtk3"
              "${MINGW_PACKAGE_PREFIX}-pkg-config")
-source=("https://downloads.sourceforge.net/scintilla/${_realname}${pkgver//./}.tgz"
+source=("https://www.scintilla.org/${_realname}${pkgver//./}.tgz"
         "0001-Use-POSIX-tools-in-makefiles.patch"
         "0002-Prefix-library-names.patch"
         "0003-Use-FHS.patch")
-sha256sums=('197372e80db2c16c86d9677a56a430209dc2f2adfdf9b7bda73b62dd19eb1e20'
-            '89f978965459eebf75fe11552233b2c82d84a2f3d88410e9be6122f065309139'
-            'efb8a535016aa60877825f8d82b26a33b7e1c9954276cead711a6f847f09991b'
+sha256sums=('fb7d9d2899b9559b31beca6a695d5b271cc7a6461b218e4a961b4fcd320a798f'
+            'df23e0fdc65a50645b274a85464d387a2e3f78cd6f6396b2c53978b1cb7f42b7'
+            'ba2a58eee2986cd2c3e9b25a9f62b530a087b352fbc403ffcd283972e95dd135'
             'ad3f4fa6e6e2ac9e20fbb3961682a9009788134081075ae9737f0b68a4284c30')
 
 prepare() {

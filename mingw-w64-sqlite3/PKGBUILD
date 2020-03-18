@@ -5,28 +5,56 @@
 _realname=sqlite3
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-_amalgamationver=3200100
-pkgver=3.20.1
+_amalgamationver=3310100
+_docver=${_amalgamationver}
+pkgver=3.31.1
 pkgrel=1
 pkgdesc="A C library that implements an SQL database engine (mingw-w64)"
 arch=('any')
 license=(PublicDomain)
 url="https://www.sqlite.org"
+provides=(${MINGW_PACKAGE_PREFIX}-sqlite=${pkgver}
+          ${MINGW_PACKAGE_PREFIX}-sqlite-analyzer=${pkgver}
+          ${MINGW_PACKAGE_PREFIX}-sqlite-docs=${pkgver})
+conflicts=(${MINGW_PACKAGE_PREFIX}-sqlite-analyzer)
+replaces=(${MINGW_PACKAGE_PREFIX}-sqlite-analyzer)
 depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs"
-         "${MINGW_PACKAGE_PREFIX}-ncurses"
-         "${MINGW_PACKAGE_PREFIX}-readline")
+         "${MINGW_PACKAGE_PREFIX}-readline"
+         "${MINGW_PACKAGE_PREFIX}-tcl")
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc")
-source=("https://www.sqlite.org/2017/sqlite-autoconf-${_amalgamationver}.tar.gz"
-        LICENSE)
-sha256sums=('ec66595b29bc0798b023a5122021ea646ab4fa9e2f735937c5426feeba950742'
-            '0b76663a90e034f3d7f2af5bfada4cedec5ebc275361899eccc5c18e6f01ff1f')
+source=(https://www.sqlite.org/2020/sqlite-src-${_amalgamationver}.zip
+        https://www.sqlite.org/2020/sqlite-doc-${_docver}.zip
+        LICENSE
+        lemon.patch)
+sha256sums=('f2dc2382855d99a960c363c1e5ae72b49da4c55d49154aa6d100e5970a1fee58'
+            'eb669d0044ca605817919de48cf54592aa15afafa4af42246649dec54940271b'
+            '0b76663a90e034f3d7f2af5bfada4cedec5ebc275361899eccc5c18e6f01ff1f'
+            'd29bb02ea8b83a947d9465af1ed420c030c948ef574f00fdf436080809d6ff53')
 options=('!strip' 'staticlibs' '!buildflags')
+
+prepare() {
+  cd "${srcdir}/sqlite-src-${_amalgamationver}"
+  patch -p0 -i "${srcdir}"/lemon.patch
+}
 
 build() {
   [[ -d ${srcdir}/build-${MINGW_CHOST} ]] && rm -rf ${srcdir}/build-${MINGW_CHOST}
   mkdir -p ${srcdir}/build-${MINGW_CHOST} && cd ${srcdir}/build-${MINGW_CHOST}
-  CFLAGS+=" -fexceptions -DSQLITE_ENABLE_COLUMN_METADATA=1 -DSQLITE_USE_MALLOC_H=1 -DSQLITE_USE_MSIZE=1 -DSQLITE_DISABLE_DIRSYNC=1 -DSQLITE_ENABLE_RTREE=1 -fno-strict-aliasing"
-  ../sqlite-autoconf-${_amalgamationver}/configure \
+
+  export lt_cv_deplibs_check_method='pass_all'
+
+  SQLITE_OPTIONS="\
+            -DSQLITE_ENABLE_COLUMN_METADATA=1 \
+            -DSQLITE_USE_MALLOC_H=1 \
+            -DSQLITE_USE_MSIZE=1 \
+            -DSQLITE_DISABLE_DIRSYNC=1 \
+            -DSQLITE_ENABLE_RTREE=1 \
+            -DSQLITE_ENABLE_DBSTAT_VTAB=1 \
+  "
+
+  CFLAGS+=" -fexceptions -fno-strict-aliasing ${SQLITE_OPTIONS}"
+
+  ../sqlite-src-${_amalgamationver}/configure \
     --prefix=${MINGW_PREFIX} \
     --host=${MINGW_CHOST} \
     --target=${MINGW_CHOST} \
@@ -35,13 +63,30 @@ build() {
     --disable-editline \
     --enable-readline \
     --enable-json1 \
+    --enable-fts4 \
     --enable-fts5 \
-    --enable-session
+    --enable-session \
+    --with-readline-inc=${MINGW_PREFIX}/include \
+    --with-tcl=${MINGW_PREFIX}/lib \
+    TCLLIBDIR=${MINGW_PREFIX}/lib/sqlite${pkgver}
+
   make
+  # build additional tools
+  make sqlite3_analyzer.exe
 }
 
 package() {
   cd ${srcdir}/build-${MINGW_CHOST}
   make DESTDIR="${pkgdir}" install
+
+  install -Dm755 .libs/sqlite3_analyzer.exe "${pkgdir}${MINGW_PREFIX}/bin/sqlite3_analyzer.exe"
+  mv ${pkgdir}${MINGW_PREFIX}/lib/bin/*.* ${pkgdir}${MINGW_PREFIX}/lib/sqlite${pkgver}/
+  rm -rf ${pkgdir}${MINGW_PREFIX}/lib/bin
+  
+  # Install docs
+  cd ${srcdir}/sqlite-doc-${_docver}
+  mkdir -p ${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}
+  cp -R *  ${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/
+
   install -Dm644 "${srcdir}/LICENSE" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
 }

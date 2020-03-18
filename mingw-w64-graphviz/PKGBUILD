@@ -4,10 +4,10 @@ _realname=graphviz
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
 pkgver=2.40.1
-pkgrel=1
+pkgrel=10
 pkgdesc="Graph Visualization Software (mingw-w64)"
 arch=('any')
-url='http://www.graphviz.org/'
+url='https://www.graphviz.org/'
 license=('EPL')
 depends=("${MINGW_PACKAGE_PREFIX}-cairo"
          "${MINGW_PACKAGE_PREFIX}-devil"
@@ -22,34 +22,67 @@ depends=("${MINGW_PACKAGE_PREFIX}-cairo"
          "${MINGW_PACKAGE_PREFIX}-libgd"
          "${MINGW_PACKAGE_PREFIX}-libpng"
          "${MINGW_PACKAGE_PREFIX}-libsystre"
+         "${MINGW_PACKAGE_PREFIX}-libwebp"
+         "${MINGW_PACKAGE_PREFIX}-gts"
          "${MINGW_PACKAGE_PREFIX}-pango"
          "${MINGW_PACKAGE_PREFIX}-poppler"
-         "${MINGW_PACKAGE_PREFIX}-zlib")
+         "${MINGW_PACKAGE_PREFIX}-zlib"
+         "${MINGW_PACKAGE_PREFIX}-libtool")
 makedepends=(#"${MINGW_PACKAGE_PREFIX}-ocaml"
-             "${MINGW_PACKAGE_PREFIX}-lua"
+             #"${MINGW_PACKAGE_PREFIX}-lua"
              "${MINGW_PACKAGE_PREFIX}-pkg-config"
              "${MINGW_PACKAGE_PREFIX}-python2"
-             "${MINGW_PACKAGE_PREFIX}-ruby"
-             "${MINGW_PACKAGE_PREFIX}-tcl"
-             "${MINGW_PACKAGE_PREFIX}-zlib")
-source=("http://www.graphviz.org/pub/${_realname}/stable/SOURCES/${_realname}-${pkgver}.tar.gz"
-        001-mingw-vs-msvc.patch
-        002-fix-dependency-detect.patch)
-sha256sums=('ca5218fade0204d59947126c38439f432853543b0818d9d728c589dfe7f3a421'
-            '1a9d4da42a083fb497c36aa446f8207770331599d24a4f8ec1aa9a22d71becfd'
-            '985ade9fb44e9ea78d6cc7d4c6b94fbc160ab5ab05880adaa0df7ccc632e3b54')
+             #"${MINGW_PACKAGE_PREFIX}-ruby"
+             #"${MINGW_PACKAGE_PREFIX}-tcl"
+             "${MINGW_PACKAGE_PREFIX}-zlib"
+             "git")
+options=(libtool)
+install=${_realname}-${CARCH}.install
+source=(${_realname}-${pkgver}::git+https://gitlab.com/graphviz/graphviz.git#tag=stable_release_${pkgver}
+        #https://graphviz.gitlab.io/pub/graphviz/stable/SOURCES/graphviz.tar.gz
+        #"https://www.graphviz.org/pub/${_realname}/stable/SOURCES/${_realname}-${pkgver}.tar.gz"
+        001-msvc-pragma.patch.patch
+        002-no-undefined-and-def-files.patch
+        003-fix-dependency-detect.patch
+        004-exports.patch
+        005-plugin-exports.patch
+        006-missing-libs.patch
+        007-dont-export-libtool-symbols.patch
+        008-fix-dll-names-in-def.patch
+        009-fix-warnings.patch
+        010-no-extern-time.patch)
+sha256sums=('SKIP'
+            'f64a7c0fdfd15aedc8cf31c39c5017df1ac8e21f3ffa6f362e62952a8b990aef'
+            '62c4a7c92b6400a836ee5ee8f669d9ca57c457e82b74cd4af2c6537a72a61b5c'
+            '125ab01113fb39b8c42ab65a6e286193deb565171269462e764dbfe2ef78aeec'
+            '4d8b322664411bd82356825c9798b94b2843618134e9bcb8ad8bb1f138d6bc37'
+            '1b4ca68365a14c926fd42a20b7ee094eda7f4747a05af302fc109f66fab5e528'
+            'f90d3e43d3bb3b16a576ed9f4158498b0d6579c08f2f93d664a530d2097bda43'
+            '99616247f4dabb22df1b031e2de873706deeaf9d5e868b1b3b9e9a784d61b12d'
+            '8500ac206bab3d103983d8c20d09152a15f40b5229c9620a8c68447f9e9e72ed'
+            'b4906b306ed03714a32fa89ca1871f7fe04fc7fe534969b32b48e9687be39da0'
+            '36aad4169c7680ac22fc6a52cf7dbf6e01afd4525f4863a8fd0785a2d22d825a')
 
 prepare() {
   cd "${srcdir}"/${_realname}-${pkgver}
-  patch -p1 -i ${srcdir}/001-mingw-vs-msvc.patch
-  patch -p1 -i ${srcdir}/002-fix-dependency-detect.patch
+  patch -p1 -i ${srcdir}/001-msvc-pragma.patch.patch
+  patch -p1 -i ${srcdir}/002-no-undefined-and-def-files.patch
+  patch -p1 -i ${srcdir}/003-fix-dependency-detect.patch
+  patch -p1 -i ${srcdir}/004-exports.patch
+  patch -p1 -i ${srcdir}/005-plugin-exports.patch
+  patch -p1 -i ${srcdir}/006-missing-libs.patch
+  patch -p1 -i ${srcdir}/007-dont-export-libtool-symbols.patch
+  patch -p1 -i ${srcdir}/008-fix-dll-names-in-def.patch
+  patch -p1 -i ${srcdir}/009-fix-warnings.patch
+  patch -p1 -i ${srcdir}/010-no-extern-time.patch
 
-  autoreconf -fiv
+  ./autogen.sh NOCONFIG
 }
 
 build() {
   local gd_incdir=$(pkg-config --variable=includedir gdlib)
-  cd "$srcdir"/${_realname}-${pkgver}
+  CFLAGS+=" -Wno-sign-conversion -Wno-sign-compare -Wno-conversion"
+  CXXFLAGS+=" -Wno-sign-conversion -Wno-sign-compare -Wno-conversion"
   [[ -d "${srcdir}"/build-${CARCH} ]] && rm -rf "${srcdir}"/build-${CARCH}
   mkdir -p "${srcdir}"/build-${CARCH} && cd "${srcdir}"/build-${CARCH}
   ../${_realname}-${pkgver}/configure \
@@ -57,9 +90,22 @@ build() {
     --build=${MINGW_CHOST} \
     --host=${MINGW_CHOST} \
     --target=${MINGW_CHOST} \
-    --enable-static \
+    --enable-guile=no \
+    --enable-perl=no \
+    --enable-php=no \
+    --enable-ocaml=no \
+    --enable-tcl=no \
+    --enable-ruby=no \
+    --enable-python=no \
+    --enable-lua=no \
+    --enable-r=no \
+    --enable-sharp=no \
+    --enable-swig=no \
+    --enable-java=no \
+    --with-webp=yes \
+    --with-gdincludedir=${gd_incdir} \
     --enable-shared \
-    --with-gdincludedir=${gd_incdir}
+    --disable-static
 
   make
 }

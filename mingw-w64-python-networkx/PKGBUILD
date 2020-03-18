@@ -1,95 +1,48 @@
 # Maintainer: Ryuta Suzuki <oroppas@gmail.com>
 
 _realname=networkx
-pkgbase=mingw-w64-python-${_realname}
-pkgname=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}"
-         "${MINGW_PACKAGE_PREFIX}-python2-${_realname}")
-pkgver=1.11
-pkgrel=2
+pkgbase=mingw-w64-python3-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=2.4
+pkgrel=1
 pkgdesc="High-productivity software for complex networks (mingw-w64)"
 arch=('any')
 license=('BSD')
-url="https://github.com/matplotlib/networkx"
-makedepends=("${MINGW_PACKAGE_PREFIX}-python3-setuptools"
-             "${MINGW_PACKAGE_PREFIX}-python2-setuptools")
-checkdepends=("${MINGW_PACKAGE_PREFIX}-python3-nose"
-              "${MINGW_PACKAGE_PREFIX}-python2-nose")
-source=("https://github.com/networkx/networkx/archive/${_realname}-${pkgver}.tar.gz")
-sha256sums=('5d630c369f6d77591f32d7d15d882ed5c9299f8ea084e6f0f6afea8b63b0f5ce')
+url="https://github.com/networkx/networkx"
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-decorator")
+optdepends=("${MINGW_PACKAGE_PREFIX}-python-numpy"
+            "${MINGW_PACKAGE_PREFIX}-python-scipy"
+            "${MINGW_PACKAGE_PREFIX}-python-pyparsing"
+            "${MINGW_PACKAGE_PREFIX}-python-yaml")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-nose")
+source=(${_realname}-${pkgver}.tar.gz::"https://github.com/networkx/networkx/archive/${_realname}-${pkgver}.tar.gz")
+sha256sums=('1ecd52964d0923932ac7ebbb1d414c27aadac0414f424203b38d633f7faa1f2c')
 
 prepare() {
-  cp -a networkx-${_realname}-${pkgver}{,-py2}
+  cd "${srcdir}"
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${_realname}-${pkgver}" "python-build-${CARCH}"
 }
 
 build() {
-  cd ${srcdir}/networkx-${_realname}-${pkgver}
-  python3 setup.py build
-
-  cd ${srcdir}/networkx-${_realname}-${pkgver}-py2
-  python2 setup.py build
+  cd ${srcdir}/python-build-${CARCH}
+  ${MINGW_PREFIX}/bin/python setup.py build
 }
 
 check() {
-  cd ${srcdir}/networkx-${_realname}-${pkgver}
-  nosetests-3.5
-
-  cd ${srcdir}/networkx-${_realname}-${pkgver}-py2
-  nosetests-2.7
+  cd ${srcdir}/python-build-${CARCH}
+  ${MINGW_PREFIX}/bin/nosetests
 }
 
-package_python3-networkx() {
-  depends=(
-    "${MINGW_PACKAGE_PREFIX}-python3"
-    "${MINGW_PACKAGE_PREFIX}-python3-decorator"
-  )
-  optdepends=(
-    "${MINGW_PACKAGE_PREFIX}-python3-numpy"
-    "${MINGW_PACKAGE_PREFIX}-python3-scipy"
-    "${MINGW_PACKAGE_PREFIX}-python3-pyparsing"
-    "${MINGW_PACKAGE_PREFIX}-python3-yaml"
-  )
-
-  cd networkx-${_realname}-${pkgver}
+package() {
+  cd ${srcdir}/python-build-${CARCH}
   MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python3 setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1
-  install -D -m644 LICENSE.txt ${pkgdir}${MINGW_PREFIX}/share/licenses/python3-${_realname}/LICENSE
+  ${MINGW_PREFIX}/bin/python setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1 --skip-build
+
+  install -D -m644 LICENSE.txt ${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE
 }
-
-package_python2-networkx() {
-  depends=(
-    "${MINGW_PACKAGE_PREFIX}-python2"
-    "${MINGW_PACKAGE_PREFIX}-python2-decorator"
-  )
-  optdepends=(
-    "${MINGW_PACKAGE_PREFIX}-python2-numpy"
-    "${MINGW_PACKAGE_PREFIX}-python2-scipy"
-    "${MINGW_PACKAGE_PREFIX}-python2-pyparsing"
-    "${MINGW_PACKAGE_PREFIX}-python2-yaml"
-)
-
-  cd networkx-${_realname}-${pkgver}-py2
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
-  ${MINGW_PREFIX}/bin/python2 setup.py install --root=${pkgdir} --prefix=${MINGW_PREFIX} --optimize=1
-  install -D -m644 LICENSE.txt ${pkgdir}${MINGW_PREFIX}/share/licenses/python2-${_realname}/LICENSE
-  
-  # Conflict files for both packages.
-  rm -rf ${pkgdir}${MINGW_PREFIX}/share/doc
-}
-
-package_mingw-w64-i686-python2-networkx() {
-  package_python2-networkx
-}
-
-package_mingw-w64-i686-python3-networkx() {
-  package_python3-networkx
-}
-
-package_mingw-w64-x86_64-python2-networkx() {
-  package_python2-networkx
-}
-
-package_mingw-w64-x86_64-python3-networkx() {
-  package_python3-networkx
-}
-
-# vim:set ts=2 sw=2 et:

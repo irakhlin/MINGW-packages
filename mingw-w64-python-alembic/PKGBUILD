@@ -1,0 +1,64 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=alembic
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=1.4.1
+pkgrel=1
+pkgdesc="Lightweight database migration tool for usage with SQLAlchemy (mingw-w64)"
+arch=('any')
+url='https://bitbucket.org/zzzeek/alembic'
+license=('MIT')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-mako"
+         "${MINGW_PACKAGE_PREFIX}-python-sqlalchemy"
+         "${MINGW_PACKAGE_PREFIX}-python-editor"
+         "${MINGW_PACKAGE_PREFIX}-python-dateutil")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-pytest"
+              "${MINGW_PACKAGE_PREFIX}-python-mock")
+options=('staticlibs' 'strip' '!debug')
+install=${_realname}3-${CARCH}.install
+source=(https://pypi.org/packages/source/a/alembic/alembic-${pkgver}.tar.gz{,.asc})
+sha512sums=('a3333c83533e8bba5fb41a1bf438806728db9597071da2afa8e8e4f246d7d5b13d081d1df7d4e8cd17a67ba2a62900808c324e2f27de7d556f9afebea5cb6ecb'
+            'SKIP')
+validpgpkeys=('83AF7ACE251C13E6BB7DEFBD330239C1C4DAFEE1') # Michael Bayer <classic@zzzcomputing.com>
+
+prepare() {
+  cd "${srcdir}"
+  rm -rf "python-build-${CARCH}" | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+}
+
+build() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/py.test || warning "Test failed"
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE"
+
+  local PREFIX_WIN=$(cygpath -wm ${MINGW_PREFIX})
+  # fix python command in files
+  for _f in "${pkgdir}${MINGW_PREFIX}"/bin/*.py; do
+    sed -e "s|/usr/bin/env |${MINGW_PREFIX}|g" \
+        -e "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" -i ${_f}
+  done
+}

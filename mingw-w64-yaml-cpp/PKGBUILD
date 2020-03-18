@@ -3,8 +3,8 @@
 _realname=yaml-cpp
 pkgbase="mingw-w64-${_realname}"
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=0.5.3
-pkgrel=1
+pkgver=0.6.3
+pkgrel=3
 pkgdesc="A YAML parser and emitter in C++ matching the YAML 1.2 spec (mingw-w64)"
 arch=('any')
 url="https://github.com/jbeder/yaml-cpp"
@@ -12,36 +12,52 @@ license=("MIT")
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
              "${MINGW_PACKAGE_PREFIX}-cmake"
              "${MINGW_PACKAGE_PREFIX}-boost"
-             "${MINGW_PACKAGE_PREFIX}-pkg-config"
-             "${MINGW_PACKAGE_PREFIX}-python2")
+             "${MINGW_PACKAGE_PREFIX}-pkg-config")
 options=('staticlibs' 'strip')
-source=(${_realname}-${pkgver}.tar.gz::https://github.com/jbeder/yaml-cpp/archive/release-${pkgver}.tar.gz
+source=(${_realname}-${pkgver}.tar.gz::https://github.com/jbeder/yaml-cpp/archive/${_realname}-${pkgver}.tar.gz
         mingw-install-pkgconfig.patch)
-sha256sums=('ac50a27a201d16dc69a881b80ad39a7be66c4d755eda1f76c3a68781b922af8f'
-            '858915b03a300145a466bd68d3f95ff80738f0821f9bba5563b4fadb2dc4fffb')
+sha256sums=('77ea1b90b3718aa0c324207cb29418f5bced2354c2e483a9523d98c3460af1ed'
+            '872d28cfb8cfc0280de846e80359c1ae3987afc8095b653df1a4e18daa7dcf72')
 
 prepare() {
-  cd ${srcdir}/${_realname}-release-${pkgver}
+  cd ${srcdir}/${_realname}-${_realname}-${pkgver}
   patch -p1 -i ${srcdir}/mingw-install-pkgconfig.patch
 }
 
 build() {
-  [[ -d "build-${MINGW_CHOST}" ]] && rm -rf "build-${MINGW_CHOST}"
-  mkdir -p ${srcdir}/build-${MINGW_CHOST}
-  cd ${srcdir}/build-${MINGW_CHOST}
+  msg2 "Build shared library"
+  [[ -d "build-${MINGW_CHOST}-shared" ]] && rm -rf "build-${MINGW_CHOST}-shared"
+  mkdir -p ${srcdir}/build-${MINGW_CHOST}-shared && cd ${srcdir}/build-${MINGW_CHOST}-shared
 
   MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
   ${MINGW_PREFIX}/bin/cmake.exe \
     -G"MSYS Makefiles" \
     -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
-    -DBUILD_SHARED_LIBS=OFF \
-    ../${_realname}-release-${pkgver}
+    -DYAML_BUILD_SHARED_LIBS=ON \
+    -DYAML_CPP_BUILD_TESTS=OFF \
+    ../${_realname}-${_realname}-${pkgver}
+  make
 
+  msg2 "Build static library"
+  [[ -d "build-${MINGW_CHOST}-static" ]] && rm -rf "build-${MINGW_CHOST}-static"
+  mkdir -p ${srcdir}/build-${MINGW_CHOST}-static && cd ${srcdir}/build-${MINGW_CHOST}-static
+
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+  ${MINGW_PREFIX}/bin/cmake.exe \
+    -G"MSYS Makefiles" \
+    -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+    -DYAML_BUILD_SHARED_LIBS=OFF \
+    -DYAML_CPP_BUILD_TESTS=OFF \
+    ../${_realname}-${_realname}-${pkgver}
   make
 }
 
 package() {
-  cd "${srcdir}/build-${MINGW_CHOST}"
+  cd "${srcdir}/build-${MINGW_CHOST}-static"
   make DESTDIR=${pkgdir} install
-  install -Dm644 ${srcdir}/${_realname}-release-${pkgver}/LICENSE ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE
+  
+  cd "${srcdir}/build-${MINGW_CHOST}-shared"
+  make DESTDIR=${pkgdir} install
+  
+  install -Dm644 ${srcdir}/${_realname}-${_realname}-${pkgver}/LICENSE ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE
 }

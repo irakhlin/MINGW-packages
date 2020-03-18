@@ -3,8 +3,8 @@
 _realname=libbotan
 pkgbase="mingw-w64-${_realname}"
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=2.2.0
-pkgrel=2
+pkgver=2.13.0
+pkgrel=1
 arch=('any')
 url='https://botan.randombit.net/'
 pkgdesc='Botan is a C++ cryptography library released under the permissive Simplified BSD license (mingw-w64)'
@@ -17,26 +17,31 @@ depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs"
 makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
              "${MINGW_PACKAGE_PREFIX}-python3"
              "${MINGW_PACKAGE_PREFIX}-python3-sphinx"
-             "${MINGW_PACKAGE_PREFIX}-python3-imagesize"
-             "${MINGW_PACKAGE_PREFIX}-doxygen")
+             "${MINGW_PACKAGE_PREFIX}-python3-imagesize")
+             #"${MINGW_PACKAGE_PREFIX}-doxygen"
+             #"${MINGW_PACKAGE_PREFIX}-graphviz")
 license=('BSD')
 options=('strip' 'staticlibs' 'docs')
-source=(https://botan.randombit.net/releases/Botan-${pkgver}.tgz{,.asc}
-        'boost-link.patch'
-        'winsock-link.patch'
-	'python-destdir.patch')
-sha256sums=('c794db2ec46f6ff88f37ae76825f0c258f07880b865b6707b26acfcc4567b824'
+source=(https://botan.randombit.net/releases/Botan-${pkgver}.tar.xz{,.asc}
+        '001-boost-link.patch'
+        '002-winsock-link.patch'
+        '003-python3-install.patch')
+noextract=("Botan-${pkgver}.tar.xz")
+sha256sums=('f57ae42a41e1091bca58f44f41addebd9a390b651603952c881ec89d50187e90'
             'SKIP'
-            '993bdf500ffc25b143fd28d86c978950969986ac8ed9c882df10270af46b8bbc'
-            '7972cf10f74dcbc95cab2452a2604c2be25c5172fac23c471c62b7341e5a7009'
-	    'ed34f834f4115551a16e406886cda197abffcb199203c6c37262593c9a249b08')
+            'c4dfd71c7e6a9592e2a95634e3fabfc071c1110a96ba218c4a3565fa14cb34da'
+            '12f676d9c8f66decd7dc52a6a70f0c044737636837c79ae02f96d8d5a2168c46'
+            '4c3160fcb47791c34984d2ada5cdb6f0dfc029dfe39822ba969d4672dc2fa170')
 validpgpkeys=('621DAF6411E1851C4CF9A2E16211EBF1EFBADFBC')
 
 prepare() {
-  cd "${srcdir}/Botan-${pkgver}"
-  patch -p1 -i "${srcdir}/boost-link.patch"
-  patch -p1 -i "${srcdir}/winsock-link.patch"
-  patch -p1 -i "${srcdir}/python-destdir.patch"
+  cd "${srcdir}"
+  # Tarball contains Botan-${pkgver}.tgz/.travis.yml symlink
+  bsdtar -xJf "Botan-${pkgver}.tar.xz" || true
+  cd "Botan-${pkgver}"
+  patch -p1 -i "${srcdir}/001-boost-link.patch"
+  patch -p1 -i "${srcdir}/002-winsock-link.patch"
+  patch -p1 -i "${srcdir}/003-python3-install.patch"
 }
 
 build() {
@@ -51,25 +56,26 @@ build() {
     BUILD_TYPE_FLAGS='--with-debug-info'
   fi
 
-  # Set prefix to mingw{32,64} not full path. Remove starting slash
+  MSYS2_ARG_CONV_EXCL="--prefix=;--libdir=;--bindir=" \
   ${MINGW_PREFIX}/bin/python3 configure.py \
-                              --disable-shared \
-                              --os=mingw \
-                              --cc=gcc \
-                              --cpu=${CARCH} \
-                              ${BUILD_TYPE_FLAGS} \
-                              --makefile-style=gmake \
-                              --link-method=copy \
-                              --with-doxygen \
-                              --with-sphinx \
-                              --with-boost \
-                              --with-openmp \
-                              --with-bzip2 \
-                              --with-lzma \
-                              --with-sqlite3 \
-                              --with-zlib
+    --disable-shared \
+    --os=mingw \
+    --cc=gcc \
+    --prefix=${MINGW_PREFIX} \
+    --cpu=${CARCH} \
+    ${BUILD_TYPE_FLAGS} \
+    --link-method=copy \
+    --without-doxygen \
+    --with-sphinx \
+    --without-rst2man \
+    --with-boost \
+    --with-openmp \
+    --with-bzip2 \
+    --with-lzma \
+    --with-sqlite3 \
+    --with-zlib
 
-    make
+  make
 }
 
 check() {
@@ -79,5 +85,7 @@ check() {
 
 package() {
   cd "${srcdir}/build-${MINGW_CHOST}"
-  DESTDIR="${pkgdir}" make install
+  MSYS2_ARG_CONV_EXCL="--prefix=;--libdir=;--bindir=" \
+  DESTDIR="${pkgdir}" \
+  make install
 }

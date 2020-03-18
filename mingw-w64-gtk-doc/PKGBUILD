@@ -1,42 +1,30 @@
 # Maintainer: Alexey Pavlov <Alexpux@gmail.com>
 
 _realname=gtk-doc
-
 pkgbase=mingw-w64-${_realname}
 pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}")
-pkgver=1.26
-pkgrel=2
+pkgver=1.32
+pkgrel=1
 pkgdesc="Documentation tool for public library API (mingw-w64)"
 arch=('any')
 url="https://www.gtk.org/gtk-doc/"
 license=("GPL" "FDL")
 options=(staticlibs strip)
-depends=(
-    "${MINGW_PACKAGE_PREFIX}-docbook-xsl"
-    "${MINGW_PACKAGE_PREFIX}-docbook-xml"
-    "${MINGW_PACKAGE_PREFIX}-libxslt"
-    "${MINGW_PACKAGE_PREFIX}-python3"
-    "${MINGW_PACKAGE_PREFIX}-python3-six"
-    )
-makedepends=(
-    "${MINGW_PACKAGE_PREFIX}-python3-setuptools"
-    "itstool"
-    )
+depends=("${MINGW_PACKAGE_PREFIX}-docbook-xsl"
+         "${MINGW_PACKAGE_PREFIX}-docbook-xml"
+         "${MINGW_PACKAGE_PREFIX}-libxslt"
+         "${MINGW_PACKAGE_PREFIX}-python3"
+         "${MINGW_PACKAGE_PREFIX}-python3-pygments")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python3-setuptools"
+             "${MINGW_PACKAGE_PREFIX}-itstool")
 url="https://www.gtk.org/gtk-doc/"
 source=(https://download.gnome.org/sources/${_realname}/${pkgver}/${_realname}-${pkgver}.tar.xz
-        pyscript2exe.py
-        0001-Always-open-files-in-text-mode-and-always-use-utf-8.patch
-        win-fixes.patch)
-sha256sums=('bff3f44467b1d39775e94fad545f050faa7e8d68dc6a31aef5024ba3c2d7f2b7'
-            'f68b24932b3365c4098c04eeaeaf87275ceec29694b3f0597c431bbcf4f913a3'
-            '02c7544fb2d84cd4fb7884a2521239008f75c35c085b3d1da06aa73d2a456296'
-            'bab8527690d529300b85154bd51b8118e0dfe3db1afec51d52d815066000b2e5')
+        pyscript2exe.py)
+sha256sums=('de0ef034fb17cb21ab0c635ec730d19746bce52984a6706e7bbec6fb5e0b907c'
+            '00e03a8b9d45e620c6fabbf96f5ccb41d1e49cc9b35ccb846d423f235ad5bec6')
 
 prepare() {
   cd "${srcdir}/${_realname}-${pkgver}"
-
-  patch -Np1 -i "${srcdir}"/0001-Always-open-files-in-text-mode-and-always-use-utf-8.patch
-  patch -Np1 -i "${srcdir}"/win-fixes.patch
 }
 
 build() {
@@ -52,7 +40,6 @@ build() {
     --host=${MINGW_CHOST} \
     --enable-shared \
     --enable-static \
-    --with-highlight=no \
     --with-xml-catalog=${MINGW_PREFIX}/etc/xml/catalog
 
   make
@@ -67,12 +54,16 @@ build() {
 }
 
 package() {
+  install=${_realname}-${CARCH}.install
   cd "${srcdir}/build-${MINGW_CHOST}"
 
   make DESTDIR="$pkgdir" install
 
-  for name in check fixxref mkdb mkhtml mkman mkpdf rebase scan scangobj depscan; do
+  local _PRE_WIN="$(cygpath -m ${MINGW_PREFIX})"
+  for name in check fixxref mkdb mkhtml mkman mkpdf rebase scan scangobj depscan mkhtml2; do
     ${MINGW_PREFIX}/bin/python3 \
       "${srcdir}/pyscript2exe.py" "${pkgdir}${MINGW_PREFIX}/bin/gtkdoc-${name}"
+    sed -e "s|${_PRE_WIN}|${MINGW_PREFIX}|g" \
+      -i "${pkgdir}${MINGW_PREFIX}/bin/gtkdoc-${name}-script.py"
   done
 }

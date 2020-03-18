@@ -1,0 +1,48 @@
+# Maintainer: Antoine Martin <totaam@xpra.org>
+
+_realname=pkgconfig
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=1.5.1
+pkgrel=1
+pkgdesc="A Python interface to the pkg-config command line tool"
+arch=('any')
+url='https://github.com/matze/pkgconfig'
+license=('MIT')
+depends=("${MINGW_PACKAGE_PREFIX}-python")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-pytest"
+              "${MINGW_PACKAGE_PREFIX}-python-nose")
+options=('staticlibs' 'strip' '!debug')
+source=("https://pypi.io/packages/source/p/pkgconfig/${_realname}-${pkgver}.tar.gz")
+sha512sums=('1fd9aa973bd20a8fab864722598f1d19b94c23c7f2b522556b3182b19fe016bda7aa2be5e48a1b8fefa70a069611007d6d790e24defcb462e4594a382de85b00')
+
+prepare() {
+  cd "${srcdir}"
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+}
+
+build() {
+  msg "Python build for ${CARCH}"  
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  msg "Python test for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py test
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=2 --skip-build
+
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE"
+}

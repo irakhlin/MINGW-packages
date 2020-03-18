@@ -1,0 +1,39 @@
+# Maintainer: Peter Budai <peterbudai@hotmail.com>
+
+_realname=seaborn
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=0.10.0
+pkgrel=1
+pkgdesc="Statistical data visualization using matplotlib (mingw-w64)"
+arch=('any')
+url='https://stanford.edu/~mwaskom/software/seaborn/'
+license=('BSD')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-pandas"
+         "${MINGW_PACKAGE_PREFIX}-python-matplotlib")
+optdepends=("${MINGW_PACKAGE_PREFIX}-python-statsmodel: for some advanced statistical plots"
+            "${MINGW_PACKAGE_PREFIX}-python-beautifulsoup4: for getting dataset names")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools"
+             "${MINGW_PACKAGE_PREFIX}-python-scipy"
+             "${MINGW_PACKAGE_PREFIX}-python-beautifulsoup4")
+source=("${_realname}-${pkgver}.tar.gz::https://github.com/mwaskom/${_realname}/archive/v${pkgver}.tar.gz")
+sha256sums=('37e2c7783ef2bb12ce749783870ca740750fc7cc0bd1776c6cacab19514affbd')
+
+build() {
+  cd "${srcdir}/${_realname}-${pkgver}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+package() {
+  cd "${srcdir}/${_realname}-${pkgver}"
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE.txt"
+}

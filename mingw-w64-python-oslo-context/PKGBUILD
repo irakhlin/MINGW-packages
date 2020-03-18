@@ -1,0 +1,53 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=oslo-context
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=3.0.0
+pkgrel=1
+pkgdesc="OpenStack Context library (mingw-w64)"
+arch=('any')
+url="https://pypi.python.org/pypi/oslo.context"
+license=('Apache')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-pbr"
+         "${MINGW_PACKAGE_PREFIX}-python-debtcollector")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-mock"
+              "${MINGW_PACKAGE_PREFIX}-python-oslotest"
+              "${MINGW_PACKAGE_PREFIX}-python-testrepository")
+options=('staticlibs' 'strip' '!debug')
+source=("${_realname}-${pkgver}.tar.gz"::"https://github.com/openstack/oslo.context/archive/${pkgver}.tar.gz")
+sha512sums=('7e8f1e4cb0d84466e6ce15052f136e922125cc5f434d0fb8ae109e743e8ed7cbd2caf6600b5ee70ef724c808483eb0331f738bee1625f1f931316ab56bf6143d')
+
+prepare() {
+  cd "${srcdir}/oslo.context-${pkgver}"
+
+  # Set version for setuptools_scm
+  export SETUPTOOLS_SCM_PRETEND_VERSION=${pkgver}
+  # Set version for python-pbr
+  export PBR_VERSION=${pkgver}
+}
+
+build() {
+  cd "${srcdir}/oslo.context-${pkgver}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  cd "${srcdir}/oslo.context-${pkgver}"
+  PYTHON=python ${MINGW_PREFIX}/bin/python setup.py testr || warning "Tests failed"
+}
+
+package() {
+  cd "${srcdir}/oslo.context-${pkgver}"
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE"
+}
